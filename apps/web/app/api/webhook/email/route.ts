@@ -1,0 +1,115 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { classifyEmail } from '@/lib/email-classifier'
+import { triggerAgent, categoryToAgent } from '@/lib/managed-agents'
+import { supabase } from '@/lib/supabase'
+import {
+  checkRateLimit,
+  getClientIp,
+  validateWebhookPayload,
+  sanitizePayload,
+  timingSafeEqual,
+} from '@/lib/security'
+import type { WebhookEmailPayload } from '@/types'
+
+export async function POST(req: NextRequest) {
+  // 1. Rate limiting
+  const ip = getClientIp(req)
+  const rateCheck = checkRateLimit(ip)
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(rateCheck.retryAfter) },
+      }
+    )
+  }
+
+  // 2. Autenticación — comparación timing-safe para evitar timing attacks
+  const secret = req.headers.get('x-webhook-secret') ?? ''
+  const expectedSecret = process.env.WEBHOOK_SECRET ?? ''
+  if (!expectedSecret || !timingSafeEqual(secret, expectedSecret)) {
+    await supabase.from('agent_logs').insert({
+      agent_name: 'invoice_intake',
+      accion: 'WEBHOOK_AUTH_FAILED',
+      payload: { ip, secret_provided: secret.length > 0 },
+      resultado: 'ERROR',
+      error_mensaje: 'Invalid or missing webhook secret',
+    })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // 3. Parsear body con límite de tamaño
+  let rawPayload: unknown
+  try {
+    const text = await req.text()
+    if (text.length > 300_000) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
+    rawPayload = JSON.parse(text)
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  // 4. Validación estructural del payload
+  const validation = validateWebhookPayload(rawPayload)
+  if (!validation.valid) {
+    return NextResponse.json({ error: validation.error }, { status: 422 })
+  }
+
+  // 5. Sanitizar y procesar
+  const payload = sanitizePayload(rawPayload as WebhookEmailPayload)
+
+  // Clasificar email
+  const classified = await classifyEmail(payload)
+
+  // Audit: registrar documento raw
+  await supabase.from('documentos').insert({
+    tipo: 'OTRO',
+    numero: payload.email_id,
+    email_id_origen: payload.email_id,
+    archivo_nombre: payload.attachment_filename ?? null,
+  })
+
+  // Audit: registrar clasificación
+  await supabase.from('agent_logs').insert({
+    agent_name: 'invoice_intake',
+    accion: 'EMAIL_CLASSIFIED',
+    payload: {
+      email_id:   payload.email_id,
+      from:       payload.email_from,
+      subject:    payload.email_subject,
+      account:    payload.account,
+      ip,
+      category:   classified.category,
+      confidence: classified.confidence,
+    },
+    resultado: 'SUCCESS',
+  })
+
+  if (classified.category === 'UNKNOWN') {
+    return NextResponse.json({ status: 'ignored', category: 'UNKNOWN' })
+  }
+
+  const agentName = categoryToAgent(classified.category)
+  if (!agentName) {
+    return NextResponse.json({ status: 'no_agent', category: classified.category })
+  }
+
+  const result = await triggerAgent(agentName, classified)
+
+  await supabase.from('agent_logs').insert({
+    agent_name: agentName,
+    session_id: result.session_id || null,
+    accion: 'AGENT_TRIGGERED',
+    payload: { email_id: payload.email_id, category: classified.category, ip },
+    resultado:     result.status === 'triggered' ? 'SUCCESS' : 'ERROR',
+    error_mensaje: result.error ?? null,
+  })
+
+  return NextResponse.json({
+    status:     result.status === 'triggered' ? 'triggered' : 'error',
+    category:   classified.category,
+    session_id: result.session_id,
+  })
+}

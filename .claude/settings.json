@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm run type-check)",
+      "Bash(npm install*)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(npx supabase*)",
+      "Bash(curl -X POST https://bluefishing-agents.vercel.app/api/webhook/email*)"
+    ],
+    "deny": []
+  },
+  "enabledMcpjsonServers": ["supabase"]
+}
