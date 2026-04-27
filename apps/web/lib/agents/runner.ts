@@ -26,15 +26,17 @@ export async function runAgentLoop(params: {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
   async function logToSupabase(accion: string, payload: unknown, resultado: string, errorMsg?: string) {
-    await supabase.from('agent_logs').insert({
-      agent_name: params.agentName,
-      session_id: sessionId,
-      remesa_id: params.remesaId ?? null,
-      accion,
-      payload,
-      resultado,
-      error_mensaje: errorMsg ?? null,
-    }).then(() => undefined).catch(() => undefined)
+    try {
+      await supabase.from('agent_logs').insert({
+        agent_name: params.agentName,
+        session_id: sessionId,
+        remesa_id: params.remesaId ?? null,
+        accion,
+        payload,
+        resultado,
+        error_mensaje: errorMsg ?? null,
+      })
+    } catch { /* silently ignore logging errors */ }
   }
 
   try {

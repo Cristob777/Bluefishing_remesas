@@ -1,0 +1,786 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { clsx } from 'clsx'
+import { toast } from 'sonner'
+import {
+  type PendingAction,
+  type InstruccionPagoAction,
+  type EmitirOrdenPagoAction,
+  type ConfirmarPagoBancarioAction,
+  type ConfirmarProvisionAction,
+  type IngresarStockAction,
+  type ReclamoProveedorAction,
+  type VincularDespachoAction,
+  type AprobarOperacionAction,
+  type ArchivarExpedienteAction,
+} from '@/lib/mock-data'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtCLP(n: number) {
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n)
+}
+function fmtAmt(n: number, moneda: string) {
+  if (moneda === 'CLP') return fmtCLP(n)
+  const dec = moneda === 'JPY' ? 0 : 2
+  return `${moneda} ${n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })}`
+}
+function todayStr() { return new Date().toISOString().split('T')[0] }
+
+// ── Action meta ───────────────────────────────────────────────────────────────
+
+const META: Record<string, { icon: string; iconBg: string; color: string; border: string; label: string; stage: string }> = {
+  INSTRUCCION_PAGO:      { icon: '📋', iconBg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE', label: 'Instrucción pago',   stage: 'I'   },
+  EMITIR_ORDEN_PAGO:     { icon: '🏦', iconBg: '#F0FDF4', color: '#059669', border: '#A7F3D0', label: 'Orden de pago',      stage: 'II'  },
+  CONFIRMAR_PAGO_BANCARIO:{ icon: '✅', iconBg: '#ECFDF5', color: '#047857', border: '#6EE7B7', label: 'Confirmación banco', stage: 'II' },
+  CONFIRMAR_PROVISION:   { icon: '⚡', iconBg: '#FEF2F2', color: '#DC2626', border: '#FECACA', label: 'Provisión fondos',   stage: 'III' },
+  INGRESAR_STOCK:        { icon: '📦', iconBg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE', label: 'Ingreso stock',      stage: 'IV'  },
+  RECLAMO_PROVEEDOR:     { icon: '⚠️', iconBg: '#FFFBEB', color: '#B45309', border: '#FDE68A', label: 'Reclamo proveedor', stage: 'IV'  },
+  VINCULAR_DESPACHO:     { icon: '🔗', iconBg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE', label: 'Vincular despacho', stage: 'I-II'},
+  APROBAR_OPERACION:     { icon: '🔒', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Aprobación ≥5M',    stage: 'V'   },
+  ARCHIVAR_EXPEDIENTE:   { icon: '🗄️', iconBg: '#F9FAFB', color: '#374151', border: '#D1D5DB', label: 'Archivar expediente',stage: 'V'  },
+}
+
+// ── Shared: invoice detail row ────────────────────────────────────────────────
+
+function DetailRow({ items }: { items: Array<{ label: string; value: string; highlight?: boolean }> }) {
+  return (
+    <div className="grid gap-3 rounded-xl p-4"
+         style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)`, background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+      {items.map(i => (
+        <div key={i.label}>
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>{i.label}</p>
+          <p className="text-xs font-bold" style={{ color: i.highlight ? '#2563EB' : '#374151' }}>{i.value}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Condition presets ─────────────────────────────────────────────────────────
+
+const PRESETS = [
+  { label: '30/70', anticipo: 30 },
+  { label: '50/50', anticipo: 50 },
+  { label: '100%',  anticipo: 100 },
+  { label: 'Personalizado', anticipo: null },
+]
+
+// ── Form 1: Instrucción de pago ───────────────────────────────────────────────
+
+function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoAction; onSubmit: (d: unknown) => void }) {
+  const [preset, setPreset]       = useState<string | null>(null)
+  const [customPct, setCustomPct] = useState(40)
+  const [notas, setNotas]         = useState('')
+
+  const pct        = preset === 'Personalizado' ? customPct : PRESETS.find(p => p.label === preset)?.anticipo ?? null
+  const saldoPct   = pct !== null ? 100 - pct : null
+  const mAnticipo  = pct !== null ? action.monto_original * pct / 100 : null
+  const mSaldo     = saldoPct !== null && saldoPct > 0 ? action.monto_original * saldoPct / 100 : null
+  const condicion  = preset === 'Personalizado' && pct !== null ? `${pct}/${100 - pct}` : preset ?? ''
+
+  return (
+    <div className="space-y-4 pt-4">
+      <DetailRow items={[
+        { label: 'Proveedor', value: action.proveedor },
+        { label: 'Invoice',   value: action.invoice },
+        { label: 'Monto total', value: fmtAmt(action.monto_original, action.moneda), highlight: true },
+      ]} />
+
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#374151' }}>Condición de pago</p>
+        <div className="flex gap-2 flex-wrap">
+          {PRESETS.map(p => (
+            <button key={p.label} onClick={() => setPreset(p.label)}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 active:scale-95"
+              style={preset === p.label
+                ? { background: '#2563EB', color: '#FFF', border: '2px solid #2563EB' }
+                : { background: '#FFF', color: '#374151', border: '2px solid #E5E7EB' }}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {preset === 'Personalizado' && (
+          <div className="mt-3 flex items-center gap-3">
+            <span className="text-xs font-medium" style={{ color: '#6B7280' }}>Anticipo</span>
+            <input type="number" min={1} max={99} value={customPct}
+              onChange={e => setCustomPct(Math.min(99, Math.max(1, Number(e.target.value))))}
+              className="w-20 px-3 py-1.5 rounded-lg text-sm font-mono border focus:outline-none"
+              style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+            <span className="text-xs font-bold" style={{ color: '#2563EB' }}>%</span>
+            <span className="text-xs" style={{ color: '#9CA3AF' }}>Saldo: {100 - customPct}%</span>
+          </div>
+        )}
+        {pct !== null && (
+          <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
+            <div className="flex items-center px-4 py-3" style={{ background: '#EFF6FF', borderBottom: '1px solid #DBEAFE' }}>
+              <span className="text-xs font-bold" style={{ color: '#2563EB' }}>{pct === 100 ? 'Pago único' : `Anticipo ${pct}%`}</span>
+              <span className="ml-auto text-sm font-bold mono" style={{ color: '#2563EB' }}>{mAnticipo !== null ? fmtAmt(mAnticipo, action.moneda) : '—'}</span>
+            </div>
+            {mSaldo !== null && saldoPct !== null && saldoPct > 0 && (
+              <div className="flex items-center px-4 py-3" style={{ background: '#F9FAFB' }}>
+                <span className="text-xs font-bold" style={{ color: '#6B7280' }}>Saldo {saldoPct}%</span>
+                <span className="ml-auto text-sm font-bold mono" style={{ color: '#374151' }}>{fmtAmt(mSaldo, action.moneda)}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Notas para Hector</label>
+        <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} placeholder="Banco destino, urgencia, instrucciones adicionales..."
+          className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border resize-none focus:outline-none"
+          style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+      </div>
+
+      <button onClick={() => onSubmit({ condicion, anticipo_pct: pct, monto_anticipo: mAnticipo, monto_saldo: mSaldo, moneda: action.moneda, notas, remesa_id: action.remesa_id })}
+        disabled={!preset}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: preset ? 'linear-gradient(135deg, #059669, #047857)' : '#9CA3AF' }}>
+        Enviar instrucción a Hector →
+      </button>
+    </div>
+  )
+}
+
+// ── Form 2: Emitir orden de pago ──────────────────────────────────────────────
+
+function EmitirOrdenPagoForm({ action, onSubmit }: { action: EmitirOrdenPagoAction; onSubmit: (d: unknown) => void }) {
+  const [numeroOrden, setNumeroOrden]   = useState('')
+  const [fechaEmision, setFechaEmision] = useState(todayStr())
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
+        <div className="px-4 py-3" style={{ background: '#F0FDF4', borderBottom: '1px solid #D1FAE5' }}>
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#059669' }}>Instrucción de Sebastian</p>
+          <p className="text-xs" style={{ color: '#374151' }}>{action.instruccion_notas}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 px-4 py-3" style={{ background: '#F9FAFB' }}>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Tipo</p><p className="text-xs font-bold" style={{ color: '#374151' }}>{action.tipo_pago} ({action.condicion_pago})</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Invoice</p><p className="text-xs font-mono font-bold" style={{ color: '#374151' }}>{action.invoice}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Monto</p><p className="text-sm font-bold" style={{ color: '#059669' }}>{fmtAmt(action.monto_pago, action.moneda)}</p></div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>N° Orden de pago (banco)</label>
+          <input type="text" value={numeroOrden} onChange={e => setNumeroOrden(e.target.value)} placeholder="Ej: OP-2026-0441"
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border font-mono focus:outline-none"
+            style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Fecha de emisión</label>
+          <input type="date" value={fechaEmision} onChange={e => setFechaEmision(e.target.value)}
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none"
+            style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+        </div>
+      </div>
+
+      <button onClick={() => onSubmit({ pago_id: action.pago_id, remesa_id: action.remesa_id, numero_orden: numeroOrden, fecha_emision: fechaEmision })}
+        disabled={!numeroOrden.trim() || !fechaEmision}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: (numeroOrden && fechaEmision) ? 'linear-gradient(135deg, #059669, #047857)' : '#9CA3AF' }}>
+        Confirmar emisión al banco →
+      </button>
+    </div>
+  )
+}
+
+// ── Form 3: Confirmar pago bancario (SWIFT) ───────────────────────────────────
+
+function ConfirmarPagoBancarioForm({ action, onSubmit }: { action: ConfirmarPagoBancarioAction; onSubmit: (d: unknown) => void }) {
+  const [swift, setSwift]               = useState('')
+  const [fechaConfirm, setFechaConfirm] = useState(todayStr())
+
+  return (
+    <div className="space-y-4 pt-4">
+      <DetailRow items={[
+        { label: 'Proveedor',    value: action.proveedor },
+        { label: 'Tipo / Orden', value: `${action.tipo_pago} — ${action.numero_orden}` },
+        { label: 'Monto pagado', value: fmtAmt(action.monto_pago, action.moneda), highlight: true },
+      ]} />
+
+      <div className="rounded-xl p-3" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+        <p className="text-xs" style={{ color: '#065F46' }}>
+          La <strong>fecha de confirmación del banco</strong> es la que se usa para calcular el tipo de cambio FX. Ingresa la fecha real en que el banco acreditó el pago, no la fecha de emisión de la orden.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Referencia SWIFT / N° confirmación</label>
+          <input type="text" value={swift} onChange={e => setSwift(e.target.value)} placeholder="Ej: SWIFT-20260422-001"
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border font-mono focus:outline-none"
+            style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Fecha real de confirmación</label>
+          <input type="date" value={fechaConfirm} onChange={e => setFechaConfirm(e.target.value)}
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none"
+            style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+        </div>
+      </div>
+
+      <button onClick={() => onSubmit({ pago_id: action.pago_id, remesa_id: action.remesa_id, referencia_swift: swift, fecha_confirmacion: fechaConfirm })}
+        disabled={!swift.trim() || !fechaConfirm}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: (swift && fechaConfirm) ? 'linear-gradient(135deg, #047857, #065F46)' : '#9CA3AF' }}>
+        Confirmar pago ejecutado — FX fecha {fechaConfirm || '—'} →
+      </button>
+    </div>
+  )
+}
+
+// ── Form 4: Confirmar provisión AGENSA ───────────────────────────────────────
+
+function ConfirmarProvisionForm({ action, onSubmit }: { action: ConfirmarProvisionAction; onSubmit: (d: unknown) => void }) {
+  const [fechaPago, setFechaPago] = useState(todayStr())
+  const isUrgent = action.dias_restantes <= 3
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${isUrgent ? '#FECACA' : '#E5E7EB'}` }}>
+        <div className="grid grid-cols-3 gap-3 px-4 py-4" style={{ background: isUrgent ? '#FEF2F2' : '#F9FAFB' }}>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Despacho</p><p className="text-xs font-mono font-bold" style={{ color: '#374151' }}>{action.numero_despacho}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Monto a pagar</p><p className="text-sm font-bold" style={{ color: isUrgent ? '#DC2626' : '#111827' }}>{fmtCLP(action.monto_clp)}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Vencimiento</p><p className="text-xs font-bold" style={{ color: isUrgent ? '#DC2626' : '#374151' }}>{new Date(action.fecha_vencimiento).toLocaleDateString('es-CL')} <span style={{ color: '#9CA3AF' }}>({action.dias_restantes}d)</span></p></div>
+        </div>
+      </div>
+
+      <div className="rounded-xl p-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+        <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#9CA3AF' }}>Cuentas AGENSA — AG. AD. ALEX AVSOLOMOVICH CALLEJAS LTDA.</p>
+        <div className="flex gap-4 flex-wrap">
+          {['BCI 15015629', 'Chile 101-01393-00', 'Itaú 200863682'].map(c => (
+            <span key={c} className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: '#E5E7EB', color: '#374151' }}>{c}</span>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Fecha en que se realizó el pago</label>
+        <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
+          className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none"
+          style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+      </div>
+
+      <button onClick={() => onSubmit({ provision_id: action.provision_id, fecha_pago: fechaPago })}
+        disabled={!fechaPago}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: fechaPago ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : '#9CA3AF' }}>
+        Confirmar pago realizado a AGENSA →
+      </button>
+    </div>
+  )
+}
+
+// ── Form 5: Ingresar stock ────────────────────────────────────────────────────
+
+function IngresarStockForm({ action, onSubmit }: { action: IngresarStockAction; onSubmit: (d: unknown) => void }) {
+  const [quantities, setQuantities] = useState<Record<string, number | ''>>({})
+  const allFilled = action.skus.every(s => quantities[s.id] !== undefined && quantities[s.id] !== '')
+
+  function diff(sku: (typeof action.skus)[0]) {
+    const q = quantities[sku.id]
+    if (q === '' || q === undefined) return null
+    return (q as number) - sku.cantidad_invoice
+  }
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
+        <div className="grid text-[10px] font-bold uppercase tracking-wider px-4 py-2"
+             style={{ gridTemplateColumns: '90px 1fr 80px 90px 55px', background: '#F9FAFB', color: '#9CA3AF', borderBottom: '1px solid #E5E7EB' }}>
+          <span>SKU</span><span>Descripción</span><span className="text-right">Inv.</span><span className="text-right">Recibido</span><span className="text-right">Dif.</span>
+        </div>
+        {action.skus.map((sku, i) => {
+          const d = diff(sku)
+          const dc = d === null ? '#9CA3AF' : d === 0 ? '#059669' : d < 0 ? '#DC2626' : '#D97706'
+          return (
+            <div key={sku.id} className="grid items-center px-4 py-3"
+                 style={{ gridTemplateColumns: '90px 1fr 80px 90px 55px', borderBottom: i < action.skus.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
+              <span className="text-xs font-mono font-bold" style={{ color: '#374151' }}>{sku.sku}</span>
+              <span className="text-xs pr-3" style={{ color: '#6B7280' }}>{sku.descripcion}</span>
+              <span className="text-xs font-mono text-right" style={{ color: '#9CA3AF' }}>{sku.cantidad_invoice}</span>
+              <div className="flex justify-end">
+                <input type="number" min={0} value={quantities[sku.id] ?? ''} placeholder="—"
+                  onChange={e => setQuantities(prev => ({ ...prev, [sku.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  className="w-20 px-2 py-1 rounded-lg text-xs font-mono text-right border focus:outline-none"
+                  style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+              </div>
+              <span className="text-xs font-bold mono text-right" style={{ color: dc }}>
+                {d === null ? '—' : d === 0 ? '✓' : d > 0 ? `+${d}` : String(d)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+
+      {!allFilled && <p className="text-xs" style={{ color: '#9CA3AF' }}>Ingresa la cantidad recibida para todos los SKUs.</p>}
+
+      <button onClick={() => onSubmit({ recepcion_id: action.recepcion_id, remesa_id: action.remesa_id, quantities })}
+        disabled={!allFilled}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: allFilled ? 'linear-gradient(135deg, #7C3AED, #6D28D9)' : '#9CA3AF' }}>
+        Confirmar ingreso a Bsale →
+      </button>
+    </div>
+  )
+}
+
+// ── Form 6: Reclamo proveedor ─────────────────────────────────────────────────
+
+function ReclamoProveedorForm({ action, onSubmit }: { action: ReclamoProveedorAction; onSubmit: (d: unknown) => void }) {
+  const [texto, setTexto] = useState('')
+
+  const soloDiferencias = action.diferencias.filter(d => d.diferencia !== 0)
+
+  const defaultText = `Estimado proveedor,\n\nEn relación al invoice ${action.invoice}, hemos detectado las siguientes diferencias en la mercadería recibida:\n\n${soloDiferencias.map(d => `- ${d.sku} (${d.descripcion}): facturado ${d.cantidad_invoice} unidades, recibido ${d.cantidad_recibida} (diferencia: ${d.diferencia})`).join('\n')}\n\nSolicitamos gestionar el envío del faltante o la nota de crédito correspondiente.\n\nSaludos,\nSebastian Cáceres — BLUEFISHING.CL`
+
+  return (
+    <div className="space-y-4 pt-4">
+      {/* Differences table */}
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #FDE68A' }}>
+        <div className="grid text-[10px] font-bold uppercase tracking-wider px-4 py-2"
+             style={{ gridTemplateColumns: '80px 1fr 70px 70px 60px', background: '#FFFBEB', color: '#9CA3AF', borderBottom: '1px solid #FDE68A' }}>
+          <span>SKU</span><span>Descripción</span><span className="text-right">Invoice</span><span className="text-right">Recibido</span><span className="text-right">Dif.</span>
+        </div>
+        {action.diferencias.map((d, i) => (
+          <div key={d.sku} className="grid items-center px-4 py-2.5"
+               style={{ gridTemplateColumns: '80px 1fr 70px 70px 60px', borderBottom: i < action.diferencias.length - 1 ? '1px solid #FEF3C7' : 'none', background: d.diferencia !== 0 ? '#FFFBEB' : '#FFF' }}>
+            <span className="text-xs font-mono font-bold" style={{ color: '#374151' }}>{d.sku}</span>
+            <span className="text-xs pr-3" style={{ color: '#6B7280' }}>{d.descripcion}</span>
+            <span className="text-xs mono text-right" style={{ color: '#9CA3AF' }}>{d.cantidad_invoice}</span>
+            <span className="text-xs mono text-right" style={{ color: '#374151' }}>{d.cantidad_recibida}</span>
+            <span className="text-xs font-bold mono text-right" style={{ color: d.diferencia < 0 ? '#DC2626' : d.diferencia > 0 ? '#D97706' : '#059669' }}>
+              {d.diferencia === 0 ? '✓' : d.diferencia > 0 ? `+${d.diferencia}` : String(d.diferencia)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {action.contacto_email && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs" style={{ color: '#6B7280' }}>Destinatario:</span>
+          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ background: '#F3F4F6', color: '#374151' }}>{action.contacto_email}</span>
+        </div>
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Texto del reclamo</label>
+          <button onClick={() => setTexto(defaultText)} className="text-xs font-medium" style={{ color: '#2563EB' }}>
+            Usar plantilla →
+          </button>
+        </div>
+        <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={6} placeholder="Redacta el reclamo al proveedor..."
+          className="w-full px-3 py-2.5 rounded-xl text-xs border resize-none focus:outline-none font-mono"
+          style={{ borderColor: '#D1D5DB', color: '#374151', lineHeight: '1.6' }} />
+      </div>
+
+      <button onClick={() => onSubmit({ remesa_id: action.remesa_id, invoice: action.invoice, proveedor: action.proveedor, texto_reclamo: texto, diferencias: action.diferencias })}
+        disabled={!texto.trim()}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: texto.trim() ? 'linear-gradient(135deg, #B45309, #92400E)' : '#9CA3AF' }}>
+        Registrar reclamo →
+      </button>
+    </div>
+  )
+}
+
+// ── Form 7: Vincular despacho ─────────────────────────────────────────────────
+
+function VincularDespachoForm({ action, onSubmit }: { action: VincularDespachoAction; onSubmit: (d: unknown) => void }) {
+  const [despacho, setDespacho]         = useState('')
+  const [fechaLlegada, setFechaLlegada] = useState('')
+
+  const formatHint = /^DSP-\d{2}-\d{4,}$/i.test(despacho.trim())
+
+  return (
+    <div className="space-y-4 pt-4">
+      <DetailRow items={[
+        { label: 'Proveedor',       value: action.proveedor },
+        { label: 'Invoice',         value: action.invoice },
+        { label: 'Monto / Moneda',  value: fmtAmt(action.monto_original, action.moneda) },
+        { label: 'Fecha invoice',   value: new Date(action.fecha_invoice).toLocaleDateString('es-CL') },
+      ]} />
+
+      <div className="rounded-xl p-3" style={{ background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
+        <p className="text-xs" style={{ color: '#3730A3' }}>
+          El número de despacho es asignado por AGENSA al iniciar el trámite aduanero. Este número vincula el invoice con las provisiones de fondos y el DIN futuro.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>
+            N° de despacho
+            {despacho && !formatHint && <span className="ml-2 normal-case font-normal" style={{ color: '#DC2626' }}>— use DSP-26-XXXX</span>}
+          </label>
+          <input type="text" value={despacho} onChange={e => setDespacho(e.target.value.toUpperCase())} placeholder="DSP-26-0042"
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border font-mono focus:outline-none"
+            style={{ borderColor: despacho && !formatHint ? '#FECACA' : '#D1D5DB', color: '#111827' }} />
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Fecha estimada llegada (opcional)</label>
+          <input type="date" value={fechaLlegada} onChange={e => setFechaLlegada(e.target.value)}
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none"
+            style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+        </div>
+      </div>
+
+      <button onClick={() => onSubmit({ remesa_id: action.remesa_id, numero_despacho: despacho, fecha_estimada_llegada: fechaLlegada || undefined })}
+        disabled={!formatHint}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: formatHint ? 'linear-gradient(135deg, #4F46E5, #4338CA)' : '#9CA3AF' }}>
+        Vincular despacho {despacho || '—'} →
+      </button>
+    </div>
+  )
+}
+
+// ── Form 8: Aprobar operación >5M ─────────────────────────────────────────────
+
+function AprobarOperacionForm({ action, onSubmit }: { action: AprobarOperacionAction; onSubmit: (d: unknown) => void }) {
+  const [decision, setDecision] = useState<'aprobado' | 'rechazado' | null>(null)
+  const [notas, setNotas]       = useState('')
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #FDBA74' }}>
+        <div className="px-4 py-3" style={{ background: '#FFF7ED', borderBottom: '1px solid #FDBA74' }}>
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#C2410C' }}>Requiere aprobación gerencia — supera CLP $5.000.000</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 px-4 py-3" style={{ background: '#F9FAFB' }}>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Proveedor</p><p className="text-xs font-semibold" style={{ color: '#111827' }}>{action.proveedor}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Monto origen</p><p className="text-sm font-bold" style={{ color: '#374151' }}>{fmtAmt(action.monto_original, action.moneda)}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Estimado CLP</p><p className="text-sm font-bold" style={{ color: '#C2410C' }}>{fmtCLP(action.monto_clp_estimado)}</p></div>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#374151' }}>Decisión</p>
+        <div className="flex gap-3">
+          <button onClick={() => setDecision('aprobado')} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95"
+            style={decision === 'aprobado' ? { background: '#059669', color: '#FFF', border: '2px solid #059669' } : { background: '#FFF', color: '#059669', border: '2px solid #A7F3D0' }}>
+            ✓ Aprobar
+          </button>
+          <button onClick={() => setDecision('rechazado')} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95"
+            style={decision === 'rechazado' ? { background: '#DC2626', color: '#FFF', border: '2px solid #DC2626' } : { background: '#FFF', color: '#DC2626', border: '2px solid #FECACA' }}>
+            ✗ Rechazar
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Comentario (opcional)</label>
+        <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} placeholder="Motivo..."
+          className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border resize-none focus:outline-none"
+          style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+      </div>
+
+      <button onClick={() => onSubmit({ remesa_id: action.remesa_id, decision, notas })} disabled={!decision}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: !decision ? '#9CA3AF' : decision === 'aprobado' ? 'linear-gradient(135deg, #059669, #047857)' : 'linear-gradient(135deg, #DC2626, #B91C1C)' }}>
+        {!decision ? 'Selecciona una decisión' : decision === 'aprobado' ? 'Confirmar aprobación →' : 'Confirmar rechazo →'}
+      </button>
+    </div>
+  )
+}
+
+// ── Form 9: Archivar expediente ───────────────────────────────────────────────
+
+function ArchivarExpedienteForm({ action, onSubmit }: { action: ArchivarExpedienteAction; onSubmit: (d: unknown) => void }) {
+  const [checked, setChecked] = useState<Record<string, boolean>>(
+    Object.fromEntries(action.checklist.map(c => [c.id, c.auto_verified]))
+  )
+  const [notas, setNotas] = useState('')
+
+  const allChecked = action.checklist.every(c => checked[c.id])
+  const progress   = action.checklist.filter(c => checked[c.id]).length
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+        <div className="flex-1">
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: '#E5E7EB' }}>
+            <div className="h-full rounded-full transition-all duration-300"
+                 style={{ width: `${(progress / action.checklist.length) * 100}%`, background: allChecked ? '#059669' : '#2563EB' }} />
+          </div>
+        </div>
+        <span className="text-xs font-bold mono flex-shrink-0" style={{ color: allChecked ? '#059669' : '#2563EB' }}>
+          {progress}/{action.checklist.length}
+        </span>
+      </div>
+
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
+        {action.checklist.map((item, i) => (
+          <label key={item.id} className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50"
+                 style={{ borderBottom: i < action.checklist.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
+            <input type="checkbox" checked={checked[item.id] ?? false}
+              onChange={e => setChecked(prev => ({ ...prev, [item.id]: e.target.checked }))}
+              className="w-4 h-4 rounded" style={{ accentColor: '#059669' }} />
+            <span className="text-sm flex-1" style={{ color: checked[item.id] ? '#059669' : '#374151' }}>
+              {item.label}
+            </span>
+            {item.auto_verified && (
+              <span className="text-[10px] font-bold uppercase tracking-wider flex-shrink-0" style={{ color: '#9CA3AF' }}>auto</span>
+            )}
+          </label>
+        ))}
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Notas de cierre (opcional)</label>
+        <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} placeholder="Observaciones finales del expediente..."
+          className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border resize-none focus:outline-none"
+          style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+      </div>
+
+      {!allChecked && (
+        <p className="text-xs" style={{ color: '#9CA3AF' }}>
+          Todos los ítems del checklist deben estar marcados para archivar.
+        </p>
+      )}
+
+      <button onClick={() => onSubmit({ remesa_id: action.remesa_id, checklist_completado: checked, notas_cierre: notas })}
+        disabled={!allChecked}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: allChecked ? 'linear-gradient(135deg, #374151, #1F2937)' : '#9CA3AF' }}>
+        Archivar expediente completo →
+      </button>
+    </div>
+  )
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+type ActionStatus = 'pending' | 'completed' | 'error'
+
+interface ActionState { action: PendingAction; status: ActionStatus; errorMsg?: string }
+
+const STAGE_ORDER = ['I', 'I-II', 'II', 'III', 'IV', 'V']
+
+export default function ActionsPage() {
+  const [items, setItems]               = useState<ActionState[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [expandedId, setExpandedId]     = useState<string | null>(null)
+  const [processingId, setProcessingId] = useState<string | null>(null)
+
+  // Fetch pending actions from real API
+  function loadActions() {
+    setLoading(true)
+    fetch('/api/actions/pending')
+      .then(r => r.json())
+      .then(d => setItems((d.actions ?? []).map((a: PendingAction) => ({ action: a, status: 'pending' as const }))))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { loadActions() }, [])
+
+  const pending = items.filter(i => i.status === 'pending').length
+  const urgent  = items.filter(i => i.status === 'pending' && i.action.urgente).length
+
+  async function handleSubmit(id: string, endpoint: string, data: unknown) {
+    setProcessingId(id)
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }))
+        throw new Error(body.error ?? res.statusText)
+      }
+      setItems(prev => prev.map(i => i.action.id === id ? { ...i, status: 'completed' } : i))
+      setExpandedId(null)
+      toast.success('Acción completada', { description: 'Registrado en el sistema.' })
+      // Reload after a brief moment so the completed action disappears
+      setTimeout(loadActions, 1200)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido'
+      setItems(prev => prev.map(i => i.action.id === id ? { ...i, status: 'error', errorMsg: msg } : i))
+      toast.error('Error al procesar', { description: msg })
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  function renderForm(action: PendingAction) {
+    if (processingId === action.id) {
+      return (
+        <div className="pt-6 pb-2 text-center">
+          <div className="inline-block w-6 h-6 border-2 rounded-full animate-spin mb-2"
+               style={{ borderColor: '#4F46E5', borderTopColor: 'transparent' }} />
+          <p className="text-sm" style={{ color: '#6B7280' }}>Procesando...</p>
+        </div>
+      )
+    }
+    const w = (ep: string) => (d: unknown) => handleSubmit(action.id, ep, d)
+    switch (action.type) {
+      case 'INSTRUCCION_PAGO':      return <InstruccionPagoForm       action={action} onSubmit={w('/api/actions/instruccion-pago')} />
+      case 'EMITIR_ORDEN_PAGO':     return <EmitirOrdenPagoForm       action={action} onSubmit={w('/api/actions/orden-pago')} />
+      case 'CONFIRMAR_PAGO_BANCARIO': return <ConfirmarPagoBancarioForm action={action} onSubmit={w('/api/actions/confirmar-pago-bancario')} />
+      case 'CONFIRMAR_PROVISION':   return <ConfirmarProvisionForm     action={action} onSubmit={w('/api/actions/confirmar-provision')} />
+      case 'INGRESAR_STOCK':        return <IngresarStockForm          action={action} onSubmit={w('/api/actions/accept-stock')} />
+      case 'RECLAMO_PROVEEDOR':     return <ReclamoProveedorForm       action={action} onSubmit={w('/api/actions/reclamo-proveedor')} />
+      case 'VINCULAR_DESPACHO':     return <VincularDespachoForm       action={action} onSubmit={w('/api/actions/vincular-despacho')} />
+      case 'APROBAR_OPERACION':     return <AprobarOperacionForm       action={action} onSubmit={w('/api/actions/approve-payment')} />
+      case 'ARCHIVAR_EXPEDIENTE':   return <ArchivarExpedienteForm     action={action} onSubmit={w('/api/actions/archivar-expediente')} />
+    }
+  }
+
+  // Group by stage
+  const byStage = STAGE_ORDER.map(stage => ({
+    stage,
+    actions: items.filter(i => META[i.action.type]?.stage === stage),
+  })).filter(g => g.actions.length > 0)
+
+  const STAGE_LABELS: Record<string, string> = {
+    'I': 'Etapa I — Invoice & Instrucción',
+    'I-II': 'Etapa I–II — Despacho aduanero',
+    'II': 'Etapa II — Pagos al proveedor',
+    'III': 'Etapa III — Provisión de fondos',
+    'IV': 'Etapa IV — Recepción mercadería',
+    'V': 'Etapa V — Cierre & Reconciliación',
+  }
+
+  return (
+    <div className="p-8 space-y-6 min-h-screen animate-fade-in">
+
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Operaciones</p>
+          <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Centro de Acciones</h1>
+          <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>Ventanilla de decisión humana · 9 flujos cubiertos</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
+            style={pending > 0 ? { background: '#F5F5F4', color: '#525252', border: '1px solid #E7E5E4' } : { background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot inline-block" style={{ background: pending > 0 ? '#525252' : '#059669' }} />
+            {pending > 0 ? `${pending} pendientes` : 'Todo al día'}
+          </span>
+          {urgent > 0 && (
+            <span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+              {urgent} urgente{urgent > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => <div key={i} className="skeleton h-16 rounded-xl" />)}
+        </div>
+      )}
+
+      {/* Stage groups */}
+      {!loading && byStage.map(({ stage, actions: stageActions }) => (
+        <div key={stage}>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em]" style={{ color: '#A3A3A3' }}>
+              {STAGE_LABELS[stage] ?? `Etapa ${stage}`}
+            </span>
+            <div className="flex-1 h-px" style={{ background: '#E7E5E4' }} />
+            <span className="text-[10px] font-bold mono" style={{ color: '#A3A3A3' }}>
+              {stageActions.filter(a => a.status === 'pending').length}/{stageActions.length}
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {stageActions.map(({ action, status, errorMsg }) => {
+              const meta       = META[action.type]
+              const isExpanded = expandedId === action.id
+              const isDone     = status === 'completed'
+              const isProc     = processingId === action.id
+
+              return (
+                <div key={action.id}
+                  className={clsx('rounded-2xl border bg-white overflow-hidden transition-all duration-300', isDone && 'opacity-50')}
+                  style={{
+                    borderColor: action.urgente && !isDone ? '#FECACA' : isExpanded ? meta.border : '#E5E7EB',
+                    boxShadow: isExpanded
+                      ? `0 0 0 2px ${meta.border}60, 0 4px 16px rgba(0,0,0,0.06)`
+                      : action.urgente && !isDone ? '0 0 0 1px rgba(220,38,38,0.1), 0 2px 8px rgba(220,38,38,0.06)'
+                      : '0 1px 3px rgba(0,0,0,0.04)',
+                  }}
+                >
+                  {action.urgente && !isDone && (
+                    <div className="h-0.5" style={{ background: 'linear-gradient(90deg, #DC2626, #EF4444, #DC2626)' }} />
+                  )}
+
+                  <button
+                    className="w-full flex items-center gap-4 p-5 text-left transition-colors hover:bg-gray-50 disabled:cursor-default"
+                    onClick={() => !isDone && !isProc && setExpandedId(isExpanded ? null : action.id)}
+                    disabled={isDone || isProc}
+                  >
+                    <div className="flex items-center justify-center w-11 h-11 rounded-xl text-xl flex-shrink-0"
+                         style={{ background: meta.iconBg }}>
+                      {isDone ? '✅' : isProc ? '⏳' : meta.icon}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="badge text-[10px]"
+                              style={{ background: meta.iconBg, color: meta.color, border: `1px solid ${meta.border}` }}>
+                          {meta.label}
+                        </span>
+                        {action.urgente && !isDone && (
+                          <span className="badge text-[10px]" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>Urgente</span>
+                        )}
+                        {isDone && (
+                          <span className="badge text-[10px]" style={{ background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>Completado</span>
+                        )}
+                      </div>
+                      <h3 className="text-sm font-bold" style={{ color: '#111827' }}>{action.title}</h3>
+                      <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{action.description}</p>
+                      <p className="text-[10px] mono mt-1.5" style={{ color: '#9CA3AF' }}>
+                        {new Date(action.created_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+
+                    {!isDone && !isProc && (
+                      <span className="text-xs font-medium flex-shrink-0 transition-transform duration-200"
+                            style={{ color: meta.color, transform: isExpanded ? 'rotate(90deg)' : 'none' }}>→</span>
+                    )}
+                  </button>
+
+                  {isExpanded && !isDone && (
+                    <div className="px-5 pb-5" style={{ borderTop: `1px solid ${meta.border}50` }}>
+                      {renderForm(action)}
+                      {errorMsg && (
+                        <p className="mt-3 text-xs rounded-lg px-3 py-2"
+                           style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                          Error: {errorMsg}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {!loading && pending === 0 && (
+        <div className="rounded-xl border p-12 text-center" style={{ background: '#FFFFFF', borderColor: '#A7F3D0' }}>
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl mx-auto mb-4" style={{ background: '#ECFDF5' }}>
+            <span style={{ fontSize: 28 }}>✓</span>
+          </div>
+          <p className="text-lg font-bold" style={{ color: '#059669' }}>¡Todo al día!</p>
+          <p className="text-sm mt-1.5" style={{ color: '#A3A3A3' }}>Todas las acciones han sido procesadas.</p>
+        </div>
+      )}
+    </div>
+  )
+}

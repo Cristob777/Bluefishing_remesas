@@ -86,13 +86,13 @@ export const ESTADO_LABELS: Record<string, string> = {
   RECONCILIADO:        'Reconciliado',
 }
 
-export const ESTADO_COLORS: Record<string, string> = {
-  INVOICE_RECIBIDO:    'bg-gray-100 text-gray-700',
-  PAGO_PENDIENTE:      'bg-yellow-100 text-yellow-800',
-  PAGO_PARCIAL:        'bg-blue-100 text-blue-800',
-  PAGO_COMPLETO:       'bg-blue-200 text-blue-900',
-  EN_ADUANA:           'bg-purple-100 text-purple-800',
-  PROVISION_RECIBIDA:  'bg-orange-100 text-orange-800',
-  MERCADERIA_RECIBIDA: 'bg-teal-100 text-teal-800',
-  RECONCILIADO:        'bg-green-100 text-green-800',
+export const ESTADO_COLORS: Record<string, { bg: string; color: string; border: string }> = {
+  INVOICE_RECIBIDO:    { bg: '#F3F4F6', color: '#4B5563', border: '#E5E7EB' },
+  PAGO_PENDIENTE:      { bg: '#FFFBEB', color: '#B45309', border: '#FDE68A' },
+  PAGO_PARCIAL:        { bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
+  PAGO_COMPLETO:       { bg: '#ECFDF5', color: '#047857', border: '#A7F3D0' },
+  EN_ADUANA:           { bg: '#F5F3FF', color: '#6D28D9', border: '#DDD6FE' },
+  PROVISION_RECIBIDA:  { bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
+  MERCADERIA_RECIBIDA: { bg: '#ECFEFF', color: '#0E7490', border: '#A5F3FC' },
+  RECONCILIADO:        { bg: '#F0FDF4', color: '#15803D', border: '#BBF7D0' },
 }

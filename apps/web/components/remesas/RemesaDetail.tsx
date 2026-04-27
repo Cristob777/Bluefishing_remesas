@@ -17,35 +17,46 @@ interface Props {
 
 type Tab = 'invoice' | 'pagos' | 'stock' | 'documentos'
 
+const PAGO_ESTADO_STYLE: Record<string, { bg: string; color: string; border: string }> = {
+  PENDIENTE: { bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' },
+  EMITIDO: { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
+  CONFIRMADO: { bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' },
+}
+
 export default function RemesaDetail({ remesa }: Props) {
   const [tab, setTab] = useState<Tab>('invoice')
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'invoice',    label: 'Invoice' },
-    { id: 'pagos',      label: `Pagos (${remesa.pagos?.length ?? 0})` },
-    { id: 'stock',      label: `Stock (${remesa.recepciones?.length ?? 0})` },
+    { id: 'invoice', label: 'Invoice' },
+    { id: 'pagos', label: `Pagos (${remesa.pagos?.length ?? 0})` },
+    { id: 'stock', label: `Stock (${remesa.recepciones?.length ?? 0})` },
     { id: 'documentos', label: `Docs (${remesa.documentos?.length ?? 0})` },
   ]
 
   return (
     <div className="card overflow-hidden">
       {/* Header */}
-      <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
+      <div className="flex items-start justify-between px-6 py-5 border-b" style={{ borderColor: '#E5E7EB' }}>
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 font-mono">
+          <h2 className="text-lg font-semibold font-mono" style={{ color: '#111827' }}>
             {remesa.numero_invoice}
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm mt-0.5" style={{ color: '#9CA3AF' }}>
             {remesa.proveedor?.nombre} · {remesa.proveedor?.pais}
           </p>
         </div>
-        <span className={clsx('badge', ESTADO_COLORS[remesa.estado])}>
+        <span className={clsx('badge')}
+          style={{
+            background: ESTADO_COLORS[remesa.estado]?.bg ?? '#F3F4F6',
+            color: ESTADO_COLORS[remesa.estado]?.color ?? '#4B5563',
+            border: `1px solid ${ESTADO_COLORS[remesa.estado]?.border ?? '#E5E7EB'}`,
+          }}>
           {ESTADO_LABELS[remesa.estado]}
         </span>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-100 px-6">
+      <div className="flex border-b px-6" style={{ borderColor: '#E5E7EB' }}>
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -53,9 +64,14 @@ export default function RemesaDetail({ remesa }: Props) {
             className={clsx(
               'py-3 px-1 mr-5 text-sm border-b-2 -mb-px transition-colors',
               tab === t.id
-                ? 'border-navy-700 text-navy-800 font-medium'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'font-semibold'
+                : 'border-transparent hover:border-gray-300'
             )}
+            style={
+              tab === t.id
+                ? { borderColor: '#2563EB', color: '#2563EB' }
+                : { color: '#9CA3AF' }
+            }
           >
             {t.label}
           </button>
@@ -67,24 +83,24 @@ export default function RemesaDetail({ remesa }: Props) {
         {tab === 'invoice' && (
           <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm sm:grid-cols-3">
             {[
-              { label: 'Monto original',    value: formatCurrency(remesa.monto_original, remesa.moneda_origen) },
-              { label: 'Moneda',            value: remesa.moneda_origen },
-              { label: 'Condición pago',    value: remesa.condicion_pago ?? '—' },
-              { label: 'Fecha invoice',     value: remesa.fecha_invoice ? formatDate(remesa.fecha_invoice) : '—' },
-              { label: 'N° despacho',       value: remesa.numero_despacho ?? '—' },
-              { label: 'DIN',               value: remesa.din_numero ?? '—' },
-              { label: 'Creado',            value: formatDate(remesa.created_at) },
-              { label: 'Actualizado',       value: formatDate(remesa.updated_at) },
+              { label: 'Monto original', value: formatCurrency(remesa.monto_original, remesa.moneda_origen) },
+              { label: 'Moneda', value: remesa.moneda_origen },
+              { label: 'Condición pago', value: remesa.condicion_pago ?? '—' },
+              { label: 'Fecha invoice', value: remesa.fecha_invoice ? formatDate(remesa.fecha_invoice) : '—' },
+              { label: 'N° despacho', value: remesa.numero_despacho ?? '—' },
+              { label: 'DIN', value: remesa.din_numero ?? '—' },
+              { label: 'Creado', value: formatDate(remesa.created_at) },
+              { label: 'Actualizado', value: formatDate(remesa.updated_at) },
             ].map(({ label, value }) => (
               <div key={label}>
-                <dt className="text-gray-500">{label}</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{value}</dd>
+                <dt style={{ color: '#9CA3AF' }}>{label}</dt>
+                <dd className="font-medium mt-0.5" style={{ color: '#111827' }}>{value}</dd>
               </div>
             ))}
             {remesa.notas && (
               <div className="col-span-full">
-                <dt className="text-gray-500">Notas</dt>
-                <dd className="text-gray-700 mt-0.5 whitespace-pre-wrap">{remesa.notas}</dd>
+                <dt style={{ color: '#9CA3AF' }}>Notas</dt>
+                <dd className="mt-0.5 whitespace-pre-wrap" style={{ color: '#4B5563' }}>{remesa.notas}</dd>
               </div>
             )}
           </dl>
@@ -94,30 +110,34 @@ export default function RemesaDetail({ remesa }: Props) {
         {tab === 'pagos' && (
           <div>
             {!remesa.pagos?.length && (
-              <p className="text-sm text-gray-400">Sin pagos registrados</p>
+              <p className="text-sm" style={{ color: '#9CA3AF' }}>Sin pagos registrados</p>
             )}
             <div className="space-y-3">
-              {remesa.pagos?.map((p) => (
-                <div key={p.id} className="rounded-md border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-800">
-                      {p.tipo} — {formatCurrency(p.monto_moneda_origen, p.moneda)}
-                    </span>
-                    <span className={clsx('badge', {
-                      'bg-yellow-100 text-yellow-800': p.estado === 'PENDIENTE',
-                      'bg-blue-100 text-blue-800':    p.estado === 'EMITIDO',
-                      'bg-green-100 text-green-800':  p.estado === 'CONFIRMADO',
-                    })}>
-                      {p.estado}
-                    </span>
+              {remesa.pagos?.map((p) => {
+                const style = PAGO_ESTADO_STYLE[p.estado] ?? PAGO_ESTADO_STYLE.PENDIENTE
+                return (
+                  <div key={p.id} className="rounded-xl border p-4" style={{ borderColor: '#E5E7EB' }}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium" style={{ color: '#111827' }}>
+                        {p.tipo} — {formatCurrency(p.monto_moneda_origen, p.moneda)}
+                      </span>
+                      <span className="badge"
+                        style={{
+                          background: style.bg,
+                          color: style.color,
+                          border: `1px solid ${style.border}`,
+                        }}>
+                        {p.estado}
+                      </span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-3 text-xs" style={{ color: '#6B7280' }}>
+                      <span>CLP: {p.monto_clp ? formatCLP(p.monto_clp) : '—'}</span>
+                      <span>FX: {p.fx_rate ?? '—'} · {p.fx_fecha ?? '—'}</span>
+                      <span>O.P.: {p.orden_pago_numero ?? '—'}</span>
+                    </div>
                   </div>
-                  <div className="mt-2 grid grid-cols-3 gap-3 text-xs text-gray-500">
-                    <span>CLP: {p.monto_clp ? formatCLP(p.monto_clp) : '—'}</span>
-                    <span>FX: {p.fx_rate ?? '—'} · {p.fx_fecha ?? '—'}</span>
-                    <span>O.P.: {p.orden_pago_numero ?? '—'}</span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -126,38 +146,44 @@ export default function RemesaDetail({ remesa }: Props) {
         {tab === 'stock' && (
           <div className="space-y-4">
             {!remesa.recepciones?.length && (
-              <p className="text-sm text-gray-400">Sin recepciones de stock</p>
+              <p className="text-sm" style={{ color: '#9CA3AF' }}>Sin recepciones de stock</p>
             )}
             {remesa.recepciones?.map((rec) => (
-              <div key={rec.id} className="rounded-md border border-gray-200 overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 flex items-center justify-between border-b border-gray-200">
-                  <p className="text-sm font-medium text-gray-800">
+              <div key={rec.id} className="rounded-xl border overflow-hidden" style={{ borderColor: '#E5E7EB' }}>
+                <div className="px-4 py-3 flex items-center justify-between border-b"
+                  style={{ background: '#FAFBFC', borderColor: '#E5E7EB' }}>
+                  <p className="text-sm font-medium" style={{ color: '#111827' }}>
                     Recepción {formatDate(rec.fecha_recepcion)}
                   </p>
-                  <span className="text-xs text-gray-500">{rec.estado}</span>
+                  <span className="text-xs" style={{ color: '#9CA3AF' }}>{rec.estado}</span>
                 </div>
                 {rec.items && rec.items.length > 0 && (
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className="px-3 py-2 text-left font-medium text-gray-500">SKU</th>
-                        <th className="px-3 py-2 text-right font-medium text-gray-500">Inv.</th>
-                        <th className="px-3 py-2 text-right font-medium text-gray-500">Recib.</th>
-                        <th className="px-3 py-2 text-right font-medium text-gray-500">Dif.</th>
+                      <tr className="border-b" style={{ borderColor: '#E5E7EB' }}>
+                        <th className="px-3 py-2 text-left font-semibold" style={{ color: '#9CA3AF' }}>SKU</th>
+                        <th className="px-3 py-2 text-right font-semibold" style={{ color: '#9CA3AF' }}>Inv.</th>
+                        <th className="px-3 py-2 text-right font-semibold" style={{ color: '#9CA3AF' }}>Recib.</th>
+                        <th className="px-3 py-2 text-right font-semibold" style={{ color: '#9CA3AF' }}>Dif.</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody>
                       {rec.items.map((item) => (
-                        <tr key={item.id} className={clsx(
-                          item.diferencia !== null && item.diferencia !== 0 && 'bg-red-50'
-                        )}>
-                          <td className="px-3 py-2 font-mono">{item.sku}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{item.cantidad_invoice}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{item.cantidad_recibida ?? '—'}</td>
-                          <td className={clsx('px-3 py-2 text-right tabular-nums font-medium', {
-                            'text-red-600':   (item.diferencia ?? 0) < 0,
-                            'text-green-600': (item.diferencia ?? 0) > 0,
-                          })}>
+                        <tr key={item.id}
+                          className="border-b"
+                          style={{
+                            borderColor: '#F3F4F6',
+                            background: (item.diferencia !== null && item.diferencia !== 0) ? '#FEF2F2' : undefined,
+                          }}>
+                          <td className="px-3 py-2 font-mono" style={{ color: '#4B5563' }}>{item.sku}</td>
+                          <td className="px-3 py-2 text-right tabular-nums" style={{ color: '#111827' }}>{item.cantidad_invoice}</td>
+                          <td className="px-3 py-2 text-right tabular-nums" style={{ color: '#111827' }}>{item.cantidad_recibida ?? '—'}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-medium"
+                            style={{
+                              color: (item.diferencia ?? 0) < 0 ? '#DC2626'
+                                : (item.diferencia ?? 0) > 0 ? '#059669'
+                                  : '#9CA3AF',
+                            }}>
                             {item.diferencia !== null
                               ? (item.diferencia > 0 ? `+${item.diferencia}` : item.diferencia)
                               : '—'}
@@ -176,16 +202,20 @@ export default function RemesaDetail({ remesa }: Props) {
         {tab === 'documentos' && (
           <div className="space-y-2">
             {!remesa.documentos?.length && (
-              <p className="text-sm text-gray-400">Sin documentos adjuntos</p>
+              <p className="text-sm" style={{ color: '#9CA3AF' }}>Sin documentos adjuntos</p>
             )}
             {remesa.documentos?.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-3 rounded-md border border-gray-200 p-3">
-                <span className="text-lg">📄</span>
+              <div key={doc.id} className="flex items-center gap-3 rounded-xl border p-3"
+                style={{ borderColor: '#E5E7EB' }}>
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg text-lg"
+                  style={{ background: '#EFF6FF' }}>
+                  📄
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">
+                  <p className="text-sm font-medium truncate" style={{ color: '#111827' }}>
                     {doc.numero ?? doc.archivo_nombre ?? doc.tipo}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
                     {doc.tipo} · {doc.fecha ? formatDate(doc.fecha) : formatDate(doc.created_at)}
                     {doc.monto && doc.moneda ? ` · ${formatCurrency(doc.monto, doc.moneda as import('@/types').Currency)}` : ''}
                   </p>
@@ -195,7 +225,8 @@ export default function RemesaDetail({ remesa }: Props) {
                     href={doc.archivo_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline"
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                    style={{ color: '#2563EB', background: '#EFF6FF' }}
                   >
                     Ver
                   </a>

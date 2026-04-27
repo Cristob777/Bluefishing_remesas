@@ -80,6 +80,7 @@ RETURNING id
   "remesa_vinculada": "<uuid o null>"
 }
 `
+}
 
 export async function runCustomsFundsAgent(input: ClassifiedEmail) {
   const today = new Date().toISOString().split('T')[0]
