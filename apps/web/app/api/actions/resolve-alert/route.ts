@@ -1,19 +1,44 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod/v4'
+import { withAuth, readJsonBody, type AuthUser } from '@/lib/auth'
+import { rateLimit } from '@/lib/rateLimit'
 
-export async function POST(req: NextRequest) {
+const Schema = z.object({
+  alert_id: z.string().uuid(),
+  action:   z.enum(['dismiss', 'escalate']),
+})
+
+function sb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
+
+export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
+  const limited = rateLimit(req, 'action', user.id)
+  if (limited) return limited
+
+  let body: unknown
   try {
-    const { alert_id, action } = await req.json()
+    body = await readJsonBody(req, 10_000)
+  } catch {
+    return NextResponse.json({ error: 'Invalid or oversized request' }, { status: 400 })
+  }
 
-    if (!alert_id || !action) {
-      return NextResponse.json({ error: 'alert_id and action are required' }, { status: 400 })
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const parsed = Schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid request', details: parsed.error.issues.map(i => i.message) },
+      { status: 400 },
     )
+  }
 
+  const { alert_id, action } = parsed.data
+  const supabase = sb()
+
+  try {
     if (action === 'dismiss') {
       const { error } = await supabase
         .from('alertas')
@@ -24,28 +49,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, action: 'dismissed' })
     }
 
-    if (action === 'escalate') {
-      // Mark original as read
-      await supabase
-        .from('alertas')
-        .update({ leida: true, leida_at: new Date().toISOString() })
-        .eq('id', alert_id)
+    // escalate
+    await supabase
+      .from('alertas')
+      .update({ leida: true, leida_at: new Date().toISOString() })
+      .eq('id', alert_id)
 
-      // Create escalation alert
-      const { error } = await supabase.from('alertas').insert({
-        tipo: 'APROBACION_REQUERIDA',
-        mensaje: `Escalado manualmente desde alerta ${alert_id}`,
-        urgente: true,
-        destinatario: 'gerente',
-      })
+    const { error } = await supabase.from('alertas').insert({
+      tipo:         'APROBACION_REQUERIDA',
+      mensaje:      `Escalado manualmente desde alerta ${alert_id} por ${user.email}`,
+      urgente:      true,
+      destinatario: 'gerente',
+    })
 
-      if (error) throw error
-      return NextResponse.json({ success: true, action: 'escalated' })
-    }
-
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    if (error) throw error
+    return NextResponse.json({ success: true, action: 'escalated' })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
   }
-}
+})

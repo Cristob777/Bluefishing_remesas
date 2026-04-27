@@ -1,11 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth, type AuthUser } from '@/lib/auth'
+import { rateLimit } from '@/lib/rateLimit'
 
-export async function GET() {
+export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
+  const limited = rateLimit(req, 'read', user.id)
+  if (limited) return limited
+
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
     const { data, error } = await supabase
@@ -21,4 +26,4 @@ export async function GET() {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message, recepciones: [] }, { status: 500 })
   }
-}
+})

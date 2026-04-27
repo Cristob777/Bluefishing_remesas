@@ -1,0 +1,122 @@
+import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+
+export type UserRole = 'owner' | 'finance' | 'warehouse' | 'agent'
+
+export interface AuthUser {
+  id:    string
+  email: string
+  role:  UserRole
+}
+
+const ROLE_MAP: Record<string, UserRole> = {
+  'sebastian.caceres@bluefishing.cl':  'owner',
+  'sebastiancaceresortizar@gmail.com': 'owner',
+  'hector@bluefishing.cl':             'finance',
+}
+
+const ALLOWED_ORIGINS = new Set([
+  'https://bluefishing-agents.vercel.app',
+  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
+])
+
+function resolveRole(email: string): UserRole {
+  return ROLE_MAP[email.toLowerCase()] ?? 'warehouse'
+}
+
+function supabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false } },
+  )
+}
+
+async function verifyBearer(token: string): Promise<AuthUser | null> {
+  const { data, error } = await supabase().auth.getUser(token)
+  if (error || !data.user) return null
+  const email = data.user.email ?? ''
+  return { id: data.user.id, email, role: resolveRole(email) }
+}
+
+// Cookie auth for requests originating from the browser dashboard
+async function verifyCookie(req: NextRequest): Promise<AuthUser | null> {
+  const cookies    = req.headers.get('cookie') ?? ''
+  const tokenMatch = cookies.match(/sb-[^=]+=([^;]+)/)
+  if (!tokenMatch) return null
+
+  try {
+    const raw    = decodeURIComponent(tokenMatch[1])
+    const parsed = JSON.parse(raw)
+    const token  = Array.isArray(parsed) ? parsed[0]?.access_token : parsed?.access_token
+    if (!token) return null
+    return verifyBearer(token)
+  } catch {
+    return null
+  }
+}
+
+// CSRF guard: mutations via cookie auth must originate from our domain.
+// Requests with Authorization header are inherently CSRF-safe (browsers cannot
+// set custom headers in cross-origin requests without a preflight).
+function isCsrfSafe(req: NextRequest, usingBearer: boolean): boolean {
+  if (usingBearer) return true
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true
+
+  const origin = req.headers.get('origin')
+  if (!origin) {
+    // No Origin header — check Referer as fallback (same-host only)
+    const referer = req.headers.get('referer')
+    const host    = req.headers.get('host')
+    if (referer && host) {
+      try { return new URL(referer).host === host } catch { return false }
+    }
+    return true // server-to-server call without browser headers — allow
+  }
+
+  return ALLOWED_ORIGINS.has(origin)
+}
+
+// ── Body helpers ─────────────────────────────────────────────────────────────
+
+export async function readJsonBody(req: NextRequest, maxBytes = 10_000): Promise<unknown> {
+  const text = await req.text()
+  if (text.length > maxBytes) {
+    throw Object.assign(new Error('Payload too large'), { status: 413 })
+  }
+  return JSON.parse(text)
+}
+
+// ── Route wrappers ────────────────────────────────────────────────────────────
+
+type RouteHandler = (req: NextRequest, user: AuthUser) => Promise<NextResponse>
+
+export function withAuth(handler: RouteHandler) {
+  return async (req: NextRequest): Promise<NextResponse> => {
+    const bearerHeader = req.headers.get('Authorization')?.replace('Bearer ', '').trim()
+    const usingBearer  = !!bearerHeader
+
+    if (!isCsrfSafe(req, usingBearer)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const user = usingBearer
+      ? await verifyBearer(bearerHeader!)
+      : await verifyCookie(req)
+
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    return handler(req, user)
+  }
+}
+
+export function withRole(allowedRoles: UserRole[], handler: RouteHandler) {
+  return withAuth(async (req, user) => {
+    if (!allowedRoles.includes(user.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+    return handler(req, user)
+  })
+}

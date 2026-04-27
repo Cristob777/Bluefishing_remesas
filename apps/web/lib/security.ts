@@ -1,8 +1,9 @@
-import { NextRequest } from 'next/server'
+import { timingSafeEqual as cryptoTimingSafeEqual } from 'crypto'
+import { NextRequest, NextResponse } from 'next/server'
 import type { WebhookEmailPayload } from '@/types'
 
-// ── Rate limiting (in-memory, resets on cold start) ──────────────────────────
-// Para producción con alto volumen, reemplazar con Vercel KV o Upstash Redis.
+// ── Rate limiting (in-memory, resets on cold start) ───────────────────────────
+// For persistent limits at scale, swap to Upstash Redis.
 
 interface RateWindow {
   count: number
@@ -10,11 +11,11 @@ interface RateWindow {
 }
 
 const rateLimitStore = new Map<string, RateWindow>()
-const RATE_LIMIT_MAX   = 20   // max requests por ventana
-const RATE_LIMIT_WINDOW = 60_000 // 60 segundos
+const RATE_LIMIT_MAX    = 20
+const RATE_LIMIT_WINDOW = 60_000
 
 export function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now()
+  const now      = Date.now()
   const existing = rateLimitStore.get(ip)
 
   if (!existing || now > existing.resetAt) {
@@ -30,19 +31,20 @@ export function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: num
   return { allowed: true }
 }
 
+// x-real-ip set by Vercel edge — more trustworthy than x-forwarded-for
 export function getClientIp(req: NextRequest): string {
   return (
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
     req.headers.get('x-real-ip') ??
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
     'unknown'
   )
 }
 
-// ── Webhook payload validation ───────────────────────────────────────────────
+// ── Webhook payload validation ────────────────────────────────────────────────
 
-const EMAIL_RE    = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const MAX_BODY_LEN = 50_000  // 50 KB
-const MAX_ATTACH_LEN = 200_000  // 200 KB
+const EMAIL_RE       = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MAX_BODY_LEN   = 50_000
+const MAX_ATTACH_LEN = 200_000
 
 export interface ValidationResult {
   valid: boolean
@@ -92,28 +94,39 @@ export function validateWebhookPayload(payload: unknown): ValidationResult {
   return { valid: true }
 }
 
-// ── Sanitize text fields (strip null bytes, control chars) ───────────────────
+// ── Sanitize text fields (strip null bytes and control chars) ─────────────────
 
 export function sanitizePayload(payload: WebhookEmailPayload): WebhookEmailPayload {
   const clean = (s: string) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
   return {
     ...payload,
-    email_id:           clean(payload.email_id),
-    email_from:         clean(payload.email_from).toLowerCase(),
-    email_subject:      clean(payload.email_subject),
-    email_body:         clean(payload.email_body),
-    attachment_text:    payload.attachment_text   ? clean(payload.attachment_text)   : undefined,
+    email_id:            clean(payload.email_id),
+    email_from:          clean(payload.email_from).toLowerCase(),
+    email_subject:       clean(payload.email_subject),
+    email_body:          clean(payload.email_body),
+    attachment_text:     payload.attachment_text     ? clean(payload.attachment_text)     : undefined,
     attachment_filename: payload.attachment_filename ? clean(payload.attachment_filename) : undefined,
   }
 }
 
-// ── Timing-safe string comparison (prevent timing attacks on secrets) ─────────
+// ── Constant-time string comparison ──────────────────────────────────────────
+// Uses Node's crypto.timingSafeEqual to prevent timing attacks.
+// Pads to avoid leaking length information when lengths differ.
 
 export function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  try {
+    const bufA  = Buffer.from(a, 'utf8')
+    const bufB  = Buffer.from(b, 'utf8')
+    const maxLen = Math.max(bufA.length, bufB.length)
+
+    // Pad both to the same length — prevents length leak via early return
+    const paddedA = Buffer.concat([bufA, Buffer.alloc(maxLen - bufA.length)])
+    const paddedB = Buffer.concat([bufB, Buffer.alloc(maxLen - bufB.length)])
+
+    // Always run the comparison (no short-circuit), then apply length equality
+    const equal = cryptoTimingSafeEqual(paddedA, paddedB)
+    return equal && bufA.length === bufB.length
+  } catch {
+    return false
   }
-  return diff === 0
 }

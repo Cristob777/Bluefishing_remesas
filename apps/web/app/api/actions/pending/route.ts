@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth, type AuthUser } from '@/lib/auth'
+import { rateLimit } from '@/lib/rateLimit'
 
 function sb() {
   return createClient(
@@ -8,14 +10,12 @@ function sb() {
   )
 }
 
-function nowPlus(days: number) {
-  const d = new Date()
-  d.setDate(d.getDate() + days)
-  return d.toISOString()
-}
+export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
+  const limited = rateLimit(req, 'read', user.id)
+  if (limited) return limited
 
-export async function GET() {
   const supabase = sb()
+  const actions: unknown[] = []
   const actions: unknown[] = []
 
   try {
@@ -263,4 +263,4 @@ export async function GET() {
   const urgent = (actions as Array<{ urgente: boolean }>).filter(a => a.urgente).length
 
   return NextResponse.json({ actions, total, urgent })
-}
+})

@@ -1,43 +1,59 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod/v4'
+import { withRole, readJsonBody, type AuthUser } from '@/lib/auth'
+import { rateLimit } from '@/lib/rateLimit'
 
-export async function POST(req: NextRequest) {
+const Schema = z.object({
+  pago_id:       z.string().uuid(),
+  numero_orden:  z.string().min(1).max(50),
+  fecha_emision: z.string().date(),
+  remesa_id:     z.string().uuid().optional(),
+})
+
+function sb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
+
+export const POST = withRole(['finance', 'owner'], async (req: NextRequest, user: AuthUser) => {
+  const limited = rateLimit(req, 'action', user.id)
+  if (limited) return limited
+
+  let body: unknown
   try {
-    const { pago_id, numero_orden, fecha_emision, remesa_id } = await req.json()
+    body = await readJsonBody(req, 10_000)
+  } catch {
+    return NextResponse.json({ error: 'Invalid or oversized request' }, { status: 400 })
+  }
 
-    if (!pago_id || !numero_orden || !fecha_emision) {
-      return NextResponse.json(
-        { error: 'pago_id, numero_orden y fecha_emision son requeridos' },
-        { status: 400 }
-      )
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const parsed = Schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid request', details: parsed.error.issues.map(i => i.message) },
+      { status: 400 },
     )
+  }
 
+  const { pago_id, numero_orden, fecha_emision, remesa_id } = parsed.data
+  const supabase = sb()
+
+  try {
     const { error } = await supabase
       .from('pagos')
-      .update({
-        estado: 'EMITIDO',
-        orden_pago_numero: numero_orden,
-        fecha_emision,
-        created_by: 'hector',
-      })
+      .update({ estado: 'EMITIDO', orden_pago_numero: numero_orden, fecha_emision, created_by: user.email })
       .eq('id', pago_id)
 
     if (error) throw error
 
-    // Si todos los pagos PENDIENTE de la remesa pasaron a EMITIDO,
-    // avanzar remesa a estado apropiado — lo hace la BD automáticamente
-    // pero dejamos la lógica en el agente. Aquí solo logueamos.
     await supabase.from('agent_logs').insert({
       agent_name: 'manual_action',
-      remesa_id: remesa_id ?? null,
-      accion: 'ORDEN_PAGO_EMITIDA',
-      payload: { pago_id, numero_orden, fecha_emision },
-      resultado: 'SUCCESS',
+      remesa_id:  remesa_id ?? null,
+      accion:     'ORDEN_PAGO_EMITIDA',
+      payload:    { pago_id, numero_orden, fecha_emision, by: user.email },
+      resultado:  'SUCCESS',
     })
 
     return NextResponse.json({ success: true, action: 'orden_emitida' })
@@ -45,4 +61,4 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
   }
-}
+})

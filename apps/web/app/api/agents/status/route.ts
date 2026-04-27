@@ -1,13 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { withAuth, type AuthUser } from '@/lib/auth'
+import { rateLimit } from '@/lib/rateLimit'
 
-export async function GET() {
+export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
+  const limited = rateLimit(req, 'read', user.id)
+  if (limited) return limited
+
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
     const agentNames = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'landed_cost']
@@ -26,19 +31,20 @@ export async function GET() {
       const latest    = agentLogs[0]
 
       let status = 'idle'
-      if (latest?.resultado === 'RUNNING')          status = 'running'
-      else if (latest?.resultado === 'ERROR')        status = 'error'
-      else if (latest?.resultado === 'SUCCESS')      status = 'idle'
+      if (latest?.resultado === 'RUNNING')     status = 'running'
+      else if (latest?.resultado === 'ERROR')  status = 'error'
+      else if (latest?.resultado === 'SUCCESS') status = 'idle'
 
-      const lastRun = latest?.created_at
-        ? `hace ${formatDistanceToNow(new Date(latest.created_at), { locale: es })}`
-        : null
-
-      agents[name] = { status, lastRun }
+      agents[name] = {
+        status,
+        lastRun: latest?.created_at
+          ? `hace ${formatDistanceToNow(new Date(latest.created_at), { locale: es })}`
+          : null,
+      }
     }
 
     return NextResponse.json({ agents })
   } catch {
     return NextResponse.json({ agents: {} })
   }
-}
+})

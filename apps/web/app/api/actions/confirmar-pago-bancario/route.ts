@@ -1,39 +1,55 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod/v4'
+import { withRole, readJsonBody, type AuthUser } from '@/lib/auth'
+import { rateLimit } from '@/lib/rateLimit'
 
-export async function POST(req: NextRequest) {
+const Schema = z.object({
+  pago_id:            z.string().uuid(),
+  remesa_id:          z.string().uuid().optional(),
+  referencia_swift:   z.string().min(1).max(50),
+  fecha_confirmacion: z.string().date(),
+})
+
+function sb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
+
+export const POST = withRole(['finance', 'owner'], async (req: NextRequest, user: AuthUser) => {
+  const limited = rateLimit(req, 'action', user.id)
+  if (limited) return limited
+
+  let body: unknown
   try {
-    const { pago_id, remesa_id, referencia_swift, fecha_confirmacion } = await req.json()
+    body = await readJsonBody(req, 10_000)
+  } catch {
+    return NextResponse.json({ error: 'Invalid or oversized request' }, { status: 400 })
+  }
 
-    if (!pago_id || !referencia_swift || !fecha_confirmacion) {
-      return NextResponse.json(
-        { error: 'pago_id, referencia_swift y fecha_confirmacion son requeridos' },
-        { status: 400 }
-      )
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const parsed = Schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid request', details: parsed.error.issues.map(i => i.message) },
+      { status: 400 },
     )
+  }
 
-    // Marcar pago como CONFIRMADO con la fecha real del banco
-    // fx_fecha = fecha_confirmacion — es la fecha que usa landed_cost para el FX
+  const { pago_id, remesa_id, referencia_swift, fecha_confirmacion } = parsed.data
+  const supabase = sb()
+
+  try {
     const { data: pago, error } = await supabase
       .from('pagos')
-      .update({
-        estado:             'CONFIRMADO',
-        fecha_confirmacion: fecha_confirmacion,
-        fx_fecha:           fecha_confirmacion,
-        orden_pago_numero:  referencia_swift,
-      })
+      .update({ estado: 'CONFIRMADO', fecha_confirmacion, fx_fecha: fecha_confirmacion, orden_pago_numero: referencia_swift })
       .eq('id', pago_id)
       .select('remesa_id, moneda, monto_moneda_origen, tipo')
       .single()
 
     if (error) throw error
 
-    // Verificar si todos los pagos de la remesa están confirmados
     const rid = remesa_id ?? pago?.remesa_id
     if (rid) {
       const { data: pendientes } = await supabase
@@ -54,7 +70,7 @@ export async function POST(req: NextRequest) {
       agent_name: 'manual_action',
       remesa_id:  rid ?? null,
       accion:     'PAGO_BANCARIO_CONFIRMADO',
-      payload:    { pago_id, referencia_swift, fecha_confirmacion },
+      payload:    { pago_id, referencia_swift, fecha_confirmacion, by: user.email },
       resultado:  'SUCCESS',
     })
 
@@ -63,4 +79,4 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
   }
-}
+})
