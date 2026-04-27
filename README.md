@@ -80,7 +80,7 @@ A discrepancy in Stage IV automatically prepares a supplier claim draft — the 
 
 | Layer | Choice | Why |
 |------|--------|-----|
-| AI agents | Claude Managed Agents (Sonnet 4) | Zero infrastructure, pay-per-use |
+| AI agents | Claude Managed Agents (Opus 4.7) | Zero infrastructure, pay-per-use |
 | Database | Supabase (Postgres + Realtime) | RLS, instant subscriptions, free tier |
 | Frontend & API | Next.js 15 App Router | Server components + edge functions |
 | Hosting | Vercel | Push-to-deploy, global edge |
@@ -198,5 +198,5 @@ For commercial enquiries: **cristobal.caceres@mayor.cl**
 
 ---
 
-<sub>Built with Claude Sonnet 4 · Designed in Antigravity · Deployed from a single laptop.</sub>
+<sub>Built with Claude Opus 4.7 · Designed in Antigravity · Deployed from a single laptop.</sub>
 *Built with Claude AI · Supabase · Next.js · Vercel*
