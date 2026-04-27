@@ -1,35 +1,35 @@
-# 🎣 Bluefishing AI Agents
+# Bluefishing AI Agents
 
-> Sistema de automatización financiera con IA para importaciones desde China y Japón — construido para **MI TIENDA SPA / BLUEFISHING.CL**, Santiago Chile.
-
----
-
-## ¿Qué hace este sistema?
-
-Bluefishing importa productos de pesca deportiva desde proveedores en China y Japón. Cada importación involucra una cadena compleja de correos, transferencias bancarias, despachos aduaneros, recepciones de bodega y conciliación de costos.
-
-Este sistema **automatiza completamente ese flujo** usando agentes de IA que monitorean los emails, extraen información financiera, calculan tipos de cambio en tiempo real y actualizan el estado de cada operación en una base de datos centralizada.
+> AI-powered financial automation for fishing gear imports from China and Japan — built for **MI TIENDA SPA / BLUEFISHING.CL**, Santiago Chile.
 
 ---
 
-## Stack Técnico
+## What does this system do?
 
-| Capa | Tecnología |
+Bluefishing imports sporting fishing products from suppliers in China and Japan. Each shipment involves a complex chain of emails, bank transfers, customs clearances, warehouse receiving, and cost reconciliation.
+
+This system **fully automates that workflow** using AI agents that monitor emails, extract financial data, calculate real-time exchange rates, and update the status of every operation in a centralized database.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
 |---|---|
-| **Agentes IA** | Claude Managed Agents (Anthropic) |
-| **Base de datos** | Supabase (PostgreSQL + Realtime + Storage) |
+| **AI Agents** | Claude Managed Agents (Anthropic) |
+| **Database** | Supabase (PostgreSQL + Realtime + Storage) |
 | **Frontend / API** | Next.js 15 App Router |
 | **Hosting** | Vercel |
-| **Base de Conocimiento** | Obsidian → Supabase (RAG sync) |
-| **FX en tiempo real** | CMF Chile API |
-| **Inventario** | Bsale API |
+| **Knowledge Base** | Obsidian → Supabase (RAG sync) |
+| **Live FX rates** | CMF Chile API |
+| **Inventory** | Bsale API |
 
 ---
 
-## Arquitectura de Agentes
+## Agent Architecture
 
 ```
-Email de Proveedor (AMIGOS/MEIHO/VARIVAS)
+Supplier Email (AMIGOS / MEIHO / VARIVAS)
         │
         ▼
 ┌─── Next.js Webhook ───┐
@@ -40,10 +40,10 @@ Email de Proveedor (AMIGOS/MEIHO/VARIVAS)
 ┌──────────────────────────────────────────────┐
 │           CLAUDE MANAGED AGENTS              │
 │                                              │
-│  📄 invoice_intake     → Detecta facturas    │
-│  🏛️  customs_funds     → Provisiones AGENSA  │
-│  📦 landed_cost        → Costo real por SKU  │
-│  📋 din_reconciliation → Concilia DIN+pagos  │
+│  📄 invoice_intake     → Detects invoices    │
+│  🏛️  customs_funds     → AGENSA provisions   │
+│  📦 landed_cost        → Real cost per SKU   │
+│  📋 din_reconciliation → Reconciles DIN+pays │
 └──────────────────────────────────────────────┘
         │
         ▼
@@ -56,51 +56,51 @@ Email de Proveedor (AMIGOS/MEIHO/VARIVAS)
 
 ---
 
-## Flujo de Operaciones (5 etapas)
+## Operations Flow (5 stages)
 
-1. **Invoice Proveedor** → llega a Sebastian → agente extrae monto, moneda y condición de pago
-2. **Orden de Pago** → Hector recibe alerta y emite transferencia al banco (30/70, 50/50, 100%)
-3. **Provisión de Fondos AGENSA** → agente detecta urgencia (≤ 3 días) y alerta en tiempo real
-4. **Recepción Bodega** → ingresa cantidad real recibida por SKU en Bsale, diferencias generan reclamo automático
-5. **DIN + Facturas Aduana** → conciliación final provisión vs. costo real, archiva expediente completo
+1. **Supplier Invoice** → arrives to Sebastian → agent extracts amount, currency, and payment terms
+2. **Payment Order** → Hector receives alert and issues bank transfer (30/70, 50/50, 100%)
+3. **AGENSA Funds Provision** → agent detects urgency (≤ 3 days) and alerts in real time
+4. **Warehouse Receiving** → actual quantity received per SKU is entered in Bsale; discrepancies trigger automatic supplier claims
+5. **DIN + Customs Invoices** → final reconciliation of provision vs. real cost; full shipment file archived
 
 ---
 
-## Base de Conocimiento (RAG con Obsidian)
+## Knowledge Base (RAG with Obsidian)
 
-El sistema integra Obsidian como base de conocimiento ejecutiva. Las notas escritas en la bóveda local (reglas de proveedores, condiciones de pago, acuerdos comerciales) se sincronizan automáticamente a Supabase y los agentes las consultan antes de procesar cada operación.
+The system integrates Obsidian as an executive knowledge base. Notes written in the local vault (supplier rules, payment terms, commercial agreements) are automatically synced to Supabase and queried by agents before processing each operation.
 
 ```
-Bóveda Obsidian (local OneDrive)
+Obsidian Vault (local OneDrive)
         │
         ▼ obsidian-sync (Node.js)
         │
         ▼
-Supabase: tabla obsidian_knowledge
+Supabase: obsidian_knowledge table
         │
-        ▼ Tool Call en agente Claude
+        ▼ Tool call in Claude agent
         │
-        └── Agente toma decisiones basadas en reglas del negocio
+        └── Agent makes decisions based on business rules
 ```
 
 ---
 
-## Costo de Producción
+## Production Cost
 
 ```
-Vercel      → Hosting + Webhooks + Cron     (gratis)
-Supabase    → DB + Auth + Realtime          (gratis hasta 500MB)
-Anthropic   → 4 agentes Claude              (~$7 USD/mes)
-─────────────────────────────────────────────────────
-Total                                        ~$7 USD/mes
+Vercel      → Hosting + Webhooks + Cron     (free)
+Supabase    → DB + Auth + Realtime          (free up to 500MB)
+Anthropic   → 4 Claude agents               (~$7 USD/month)
+─────────────────────────────────────────────────────────────
+Total                                        ~$7 USD/month
 ```
 
 ---
 
-## Variables de Entorno
+## Environment Variables
 
-Ver `.env.example` — **nunca commitear credenciales reales**.
+See `.env.example` — **never commit real credentials**.
 
 ---
 
-*Construido con Claude AI · Supabase · Next.js · Vercel*
+*Built with Claude AI · Supabase · Next.js · Vercel*
