@@ -80,7 +80,7 @@ A discrepancy in Stage IV automatically prepares a supplier claim draft — the 
 
 | Layer | Choice | Why |
 |------|--------|-----|
-| AI agents | Claude Managed Agents (Opus 4.7) | Zero infrastructure, pay-per-use |
+| AI agents | Custom agentic loop — Anthropic SDK (Opus 4.7) | Full control over tool execution and retry logic |
 | Database | Supabase (Postgres + Realtime) | RLS, instant subscriptions, free tier |
 | Frontend & API | Next.js 15 App Router | Server components + edge functions |
 | Hosting | Vercel | Push-to-deploy, global edge |
