@@ -20,6 +20,9 @@ dist/
 # MCP config — contiene credenciales reales
 .mcp.json
 
+# Claude Code context — contiene datos operacionales internos
+CLAUDE.md
+
 # Vercel
 .vercel
 
