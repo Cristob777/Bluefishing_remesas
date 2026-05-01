@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════
-   BLUEFISHING — Design System v2
+   BLUEFISHING — Design System v3
    Linear minimal + Galactic accent
    ═══════════════════════════════════════════════ */
 
@@ -50,8 +50,9 @@
     /* Shadows */
     --shadow-subtle:  0 1px 2px rgba(0,0,0,0.04);
     --shadow-card:    0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-    --shadow-elevated:0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-elevated:0 4px 16px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
     --shadow-glass:   0 8px 32px rgba(15,23,42,0.1), 0 1px 0 rgba(255,255,255,0.6) inset;
+    --shadow-btn:     0 1px 2px rgba(79,70,229,0.25), 0 0 0 0 rgba(79,70,229,0);
 
     /* Radius */
     --radius-sm:      6px;
@@ -138,7 +139,7 @@
     @apply relative rounded-xl border bg-white;
     border-color: var(--border);
     box-shadow: var(--shadow-card);
-    transition: box-shadow 0.2s ease;
+    transition: box-shadow 0.2s ease, transform 0.18s ease;
   }
   .card:hover { box-shadow: var(--shadow-elevated); }
 
@@ -146,11 +147,31 @@
     @apply relative rounded-xl border bg-white;
     border-color: var(--border);
     box-shadow: var(--shadow-elevated);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    transition: box-shadow 0.2s ease, transform 0.18s ease;
   }
   .card-elevated:hover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.09);
+    transform: translateY(-2px);
+  }
+
+  /* ── Stat card — accent top-border variant ── */
+  .card-stat {
+    @apply relative rounded-xl bg-white overflow-hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.2s ease, transform 0.18s ease;
+  }
+  .card-stat:hover {
+    box-shadow: var(--shadow-elevated);
     transform: translateY(-1px);
+  }
+  .card-stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--stat-accent, var(--accent));
+    border-radius: 12px 12px 0 0;
   }
 
   /* ── Glass card ── */
@@ -179,27 +200,49 @@
   /* ── Buttons ── */
   .btn-primary {
     @apply rounded-lg px-4 py-2 text-sm font-semibold text-white
-           active:scale-[0.98] transition-all duration-150 inline-flex items-center gap-2;
+           active:scale-[0.97] transition-all duration-150 inline-flex items-center gap-2;
     background: var(--accent);
+    box-shadow: 0 1px 2px rgba(79,70,229,0.3), 0 0 0 0 rgba(79,70,229,0);
   }
-  .btn-primary:hover { background: var(--accent-hover); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 2px 6px rgba(79,70,229,0.35);
+  }
+  .btn-primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.25);
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
   .btn-secondary {
     @apply rounded-lg px-4 py-2 text-sm font-medium
-           active:scale-[0.98] transition-all duration-150 inline-flex items-center gap-2;
+           active:scale-[0.97] transition-all duration-150 inline-flex items-center gap-2;
     color: var(--text-secondary);
     background: var(--surface);
     border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
   }
-  .btn-secondary:hover { background: var(--bg-secondary); color: var(--text-primary); }
+  .btn-secondary:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+  }
+  .btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
 
   .btn-ghost {
     @apply rounded-lg px-3 py-1.5 text-sm font-medium
-           active:scale-[0.98] transition-all duration-150 inline-flex items-center gap-2;
+           active:scale-[0.97] transition-all duration-150 inline-flex items-center gap-2;
     color: var(--text-tertiary);
   }
   .btn-ghost:hover { color: var(--text-secondary); background: var(--bg-secondary); }
+
+  .btn-danger {
+    @apply rounded-lg px-4 py-2 text-sm font-semibold text-white
+           active:scale-[0.97] transition-all duration-150 inline-flex items-center gap-2;
+    background: var(--danger);
+    box-shadow: 0 1px 2px rgba(220,38,38,0.25);
+  }
+  .btn-danger:hover { background: #B91C1C; box-shadow: 0 2px 6px rgba(220,38,38,0.3); }
 
   /* ── Sidebar nav items ── */
   .nav-item {
@@ -212,10 +255,18 @@
   }
   .nav-item-active {
     color: var(--accent) !important;
-    background: var(--accent-bg) !important;
+    background: linear-gradient(90deg, rgba(79,70,229,0.10) 0%, rgba(79,70,229,0.04) 100%) !important;
     font-weight: 600;
     border-left: 2px solid var(--accent);
     padding-left: calc(0.75rem - 2px);
+    box-shadow: inset 0 0 0 1px rgba(79,70,229,0.08);
+  }
+
+  /* ── Nav section label ── */
+  .nav-section-label {
+    @apply px-3 pb-1 pt-3 text-[9px] font-bold uppercase tracking-[0.18em];
+    color: var(--text-tertiary);
+    opacity: 0.6;
   }
 
   /* ── Table ── */
@@ -224,8 +275,14 @@
     color: var(--text-tertiary);
   }
   .td { @apply px-4 py-3.5 text-sm; color: var(--text-secondary); }
-  .table-row { border-bottom: 1px solid var(--border); transition: background 0.1s ease; }
-  .table-row:hover { background: var(--bg-secondary); }
+  .table-row {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s ease, box-shadow 0.12s ease;
+  }
+  .table-row:hover {
+    background: linear-gradient(90deg, rgba(79,70,229,0.025) 0%, var(--bg-secondary) 5%);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
 
   /* ── Mono ── */
   .mono {
@@ -250,8 +307,11 @@
     border-color: var(--border);
     background: var(--surface);
     color: var(--text-primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   }
-  .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.08); }
+  .input:hover { border-color: var(--border-medium); }
+  .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.1), 0 1px 2px rgba(0,0,0,0.03); }
+  .input::placeholder { color: var(--text-tertiary); }
 
   /* ── Pill filter ── */
   .pill {
@@ -266,6 +326,85 @@
     border-color: var(--accent-border) !important;
     font-weight: 600;
   }
+}
+
+/* ── Page header ── */
+.page-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.page-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+.page-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+/* ── Kbd tag ── */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-family: var(--font-mono), monospace;
+  border-radius: 5px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+  box-shadow: 0 1px 0 var(--border-medium);
+}
+
+/* ── Live dot badge ── */
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 100px;
+  background: rgba(74,222,128,0.1);
+  border: 1px solid rgba(74,222,128,0.25);
+  font-size: 11px;
+  font-weight: 600;
+  color: #16A34A;
+}
+.live-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ADE80;
+  animation: pulse-dot 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* ── Divider with label ── */
+.divider-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+.divider-label::before,
+.divider-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 /* ── Estado badge classes ── */

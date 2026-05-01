@@ -75,10 +75,10 @@ export default async function OverviewPage() {
   })
 
   const STAT_CARDS = [
-    { label: 'Remesas activas',     value: stats.remesasActivas,     sub: 'en curso',           accent: '#4F46E5', bg: '#EEF2FF' },
-    { label: 'Pagos pendientes',    value: stats.pagosPendientes,    sub: 'órdenes por emitir', accent: '#D97706', bg: '#FFFBEB' },
-    { label: 'Provisiones urgentes',value: stats.provisionesUrgentes,sub: 'vencen en ≤ 3 días', accent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', bg: stats.provisionesUrgentes > 0 ? '#FEF2F2' : '#ECFDF5' },
-    { label: 'Diferencias stock',   value: stats.diferenciasStock,   sub: 'sin resolver',       accent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', bg: stats.diferenciasStock > 0 ? '#FFFBEB' : '#ECFDF5' },
+    { label: 'Remesas activas',      value: stats.remesasActivas,      sub: 'en curso',           icon: '📦', accent: '#4F46E5', cssAccent: '#4F46E5', bg: '#EEF2FF' },
+    { label: 'Pagos pendientes',     value: stats.pagosPendientes,     sub: 'órdenes por emitir', icon: '💳', accent: '#D97706', cssAccent: '#D97706', bg: '#FFFBEB' },
+    { label: 'Provisiones urgentes', value: stats.provisionesUrgentes, sub: 'vencen en ≤ 3 días', icon: '⚡', accent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', cssAccent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', bg: stats.provisionesUrgentes > 0 ? '#FEF2F2' : '#ECFDF5' },
+    { label: 'Diferencias stock',    value: stats.diferenciasStock,    sub: 'SKUs sin resolver',  icon: '📊', accent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', cssAccent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', bg: stats.diferenciasStock > 0 ? '#FFFBEB' : '#ECFDF5' },
   ]
 
   return (
@@ -109,20 +109,23 @@ export default async function OverviewPage() {
 
         <div className="relative flex items-start justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
               Dashboard
             </p>
-            <h1 className="text-4xl font-bold tracking-tight text-white">Operaciones</h1>
-            <p className="text-sm mt-2 capitalize" style={{ color: 'rgba(255,255,255,0.45)' }}>
-              Bluefishing · MI TIENDA SPA · {today}
+            <h1 className="text-[2.6rem] font-bold tracking-tight text-white leading-none">Operaciones</h1>
+            <p className="text-sm mt-2.5 capitalize" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              {today}
             </p>
           </div>
-          <div
-            className="flex items-center gap-2 px-3.5 py-2 rounded-full"
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: '#4ADE80', display: 'inline-block' }} />
-            <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>4 agentes activos</span>
+          <div className="flex flex-col items-end gap-2">
+            <div
+              className="flex items-center gap-2 px-3.5 py-2 rounded-full"
+              style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)' }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: '#4ADE80', display: 'inline-block' }} />
+              <span className="text-xs font-semibold" style={{ color: 'rgba(74,222,128,0.9)' }}>4 agentes activos</span>
+            </div>
+            <p className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>BLUEFISHING · MI TIENDA SPA</p>
           </div>
         </div>
       </div>
@@ -133,39 +136,55 @@ export default async function OverviewPage() {
           {STAT_CARDS.map(s => (
             <div
               key={s.label}
-              className="rounded-xl border bg-white p-5"
-              style={{ borderColor: '#E7E5E4', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}
+              className="card-stat p-5"
+              style={{ ['--stat-accent' as string]: s.cssAccent, boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}
             >
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: '#A3A3A3' }}>{s.label}</p>
-              <p className="text-4xl font-extrabold mono" style={{ color: s.accent }}>{s.value}</p>
-              <p className="text-xs mt-1.5 font-medium" style={{ color: '#A3A3A3' }}>{s.sub}</p>
+              <div className="flex items-start justify-between mb-4">
+                <div
+                  className="flex items-center justify-center w-10 h-10 rounded-xl text-xl flex-shrink-0"
+                  style={{ background: s.bg }}
+                >
+                  {s.icon}
+                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider mt-1" style={{ color: '#A3A3A3' }}>
+                  {s.sub}
+                </span>
+              </div>
+              <p className="text-[38px] font-extrabold mono leading-none" style={{ color: s.accent }}>{s.value}</p>
+              <p className="text-xs mt-2 font-semibold" style={{ color: '#525252' }}>{s.label}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* ── FX Exposure ── */}
-      <div className="px-8 mt-6 grid grid-cols-2 gap-4">
-        <div className="card p-5 flex items-center gap-5">
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl text-3xl flex-shrink-0" style={{ background: '#FEF2F2' }}>🇺🇸</div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#A3A3A3' }}>Exposición USD</p>
-            <p className="text-2xl font-extrabold mono" style={{ color: '#0A0A0A' }}>
-              ${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              <span className="text-sm font-normal ml-1" style={{ color: '#A3A3A3' }}>USD</span>
-            </p>
+      <div className="px-8 mt-5 grid grid-cols-2 gap-4">
+        {[
+          { flag: '🇺🇸', label: 'Exposición USD', value: `$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, currency: 'USD', iconBg: '#FEF3C7', accent: '#D97706' },
+          { flag: '🇯🇵', label: 'Exposición JPY', value: `¥${totalJPY.toLocaleString('ja-JP')}`, currency: 'JPY', iconBg: '#EEF2FF', accent: '#4F46E5' },
+        ].map(fx => (
+          <div key={fx.currency} className="card p-5 flex items-center gap-4">
+            <div
+              className="flex items-center justify-center w-12 h-12 rounded-xl text-2xl flex-shrink-0"
+              style={{ background: fx.iconBg }}
+            >
+              {fx.flag}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#A3A3A3' }}>{fx.label}</p>
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-2xl font-extrabold mono leading-none" style={{ color: '#0A0A0A' }}>{fx.value}</p>
+                <span
+                  className="text-[11px] font-bold px-1.5 py-0.5 rounded-md"
+                  style={{ background: fx.iconBg, color: fx.accent }}
+                >
+                  {fx.currency}
+                </span>
+              </div>
+              <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>en remesas activas</p>
+            </div>
           </div>
-        </div>
-        <div className="card p-5 flex items-center gap-5">
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl text-3xl flex-shrink-0" style={{ background: '#EEF2FF' }}>🇯🇵</div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#A3A3A3' }}>Exposición JPY</p>
-            <p className="text-2xl font-extrabold mono" style={{ color: '#0A0A0A' }}>
-              ¥{totalJPY.toLocaleString('ja-JP')}
-              <span className="text-sm font-normal ml-1" style={{ color: '#A3A3A3' }}>JPY</span>
-            </p>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* ── Bottom grid ── */}
@@ -194,16 +213,24 @@ export default async function OverviewPage() {
               }>).map((a, i) => (
                 <li
                   key={a.id}
-                  className="flex gap-3 px-5 py-4 transition-colors"
-                  style={{ borderBottom: i < alertas.length - 1 ? '1px solid #F5F5F4' : 'none' }}
+                  className="flex gap-3 px-5 py-3.5 transition-colors hover:bg-stone-50"
+                  style={{
+                    borderBottom: i < alertas.length - 1 ? '1px solid #F5F5F4' : 'none',
+                    borderLeft: a.urgente ? '2px solid #DC2626' : '2px solid transparent',
+                  }}
                 >
-                  <span className="text-xl mt-0.5 flex-shrink-0">{ALERTA_ICON[a.tipo] ?? '🔔'}</span>
+                  <span className="text-lg mt-0.5 flex-shrink-0">{ALERTA_ICON[a.tipo] ?? '🔔'}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-relaxed" style={{ color: '#525252' }}>{a.mensaje}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
+                    <p className="text-[13px] leading-relaxed" style={{ color: '#374151' }}>{a.mensaje}</p>
+                    <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] mono" style={{ color: '#A3A3A3' }}>{relTime(a.created_at)}</span>
-                      <span style={{ color: '#E7E5E4' }}>·</span>
-                      <span className="text-[10px] font-semibold uppercase" style={{ color: '#A3A3A3' }}>→ {a.destinatario}</span>
+                      <span style={{ color: '#D6D3D1' }}>·</span>
+                      <span
+                        className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                        style={{ background: '#F5F5F4', color: '#737373' }}
+                      >
+                        {a.destinatario}
+                      </span>
                     </div>
                   </div>
                   {a.urgente && <Badge variant="urgent">Urgente</Badge>}

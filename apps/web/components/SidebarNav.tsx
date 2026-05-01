@@ -64,54 +64,52 @@ export function SidebarNav() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ href, label, Icon, badgeKey }) => {
-          const isActive = pathname?.startsWith(href)
-          const count    = badgeKey === 'actions' ? pendingCount : null
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={clsx('nav-item', isActive && 'nav-item-active')}
-            >
-              <Icon size={16} className="flex-shrink-0 opacity-80" />
-              <span className="flex-1 text-[13px]">{label}</span>
-              {count != null && count > 0 && (
-                <span
-                  className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
-                  style={{ background: '#DC2626' }}
-                >
-                  {count > 99 ? '99+' : count}
-                </span>
-              )}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Agent heartbeat */}
-      <div className="px-5 py-3 border-t" style={{ borderColor: '#E7E5E4' }}>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="flex items-center gap-1">
-            {AGENTS.map((_, i) => (
-              <span
-                key={i}
-                className="rounded-full animate-pulse-dot"
-                style={{
-                  width: 6,
-                  height: 6,
-                  background: AGENT_COLORS[i],
-                  animationDelay: `${i * 300}ms`,
-                  display: 'inline-block',
-                }}
-              />
-            ))}
-          </div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#A3A3A3' }}>
-            4 AGENTES
-          </span>
+      <nav className="flex-1 px-3 py-2 overflow-y-auto">
+        <p className="nav-section-label">Menú</p>
+        <div className="space-y-0.5">
+          {NAV.map(({ href, label, Icon, badgeKey }) => {
+            const isActive = pathname?.startsWith(href)
+            const count    = badgeKey === 'actions' ? pendingCount : null
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={clsx('nav-item', isActive && 'nav-item-active')}
+              >
+                <Icon size={15} className="flex-shrink-0" style={{ opacity: isActive ? 1 : 0.6 }} />
+                <span className="flex-1 text-[13px]">{label}</span>
+                {count != null && count > 0 && (
+                  <span
+                    className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
+                    style={{ background: '#DC2626', boxShadow: '0 1px 3px rgba(220,38,38,0.3)' }}
+                  >
+                    {count > 99 ? '99+' : count}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
         </div>
-      </div>
+
+        {/* Agent heartbeat section */}
+        <p className="nav-section-label mt-2">Sistema</p>
+        <div
+          className="rounded-lg px-3 py-2.5 space-y-2"
+          style={{ background: '#FAFAF9', border: '1px solid #E7E5E4' }}
+        >
+          {AGENTS.map((agent, i) => (
+            <div key={agent} className="flex items-center gap-2">
+              <span
+                className="rounded-full animate-pulse-dot flex-shrink-0"
+                style={{ width: 6, height: 6, background: AGENT_COLORS[i], animationDelay: `${i * 280}ms`, display: 'inline-block' }}
+              />
+              <span className="text-[11px] capitalize" style={{ color: '#A3A3A3' }}>
+                {agent.replace(/_/g, ' ')}
+              </span>
+            </div>
+          ))}
+        </div>
+      </nav>
 
       {/* Cmd+K hint */}
       <button
