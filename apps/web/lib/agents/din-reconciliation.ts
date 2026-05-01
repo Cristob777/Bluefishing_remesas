@@ -2,12 +2,14 @@ import { runAgentLoop } from './runner'
 import { supabaseTool, toolHandlers } from './tools'
 import type { ClassifiedEmail } from '@/types'
 
-const SYSTEM_PROMPT = `Eres el agente de reconciliación DIN para BLUEFISHING.CL.
+function buildSystemPrompt() {
+  const customsEmail = process.env.CUSTOMS_AGENCY_EMAIL ?? 'CUSTOMS_AGENCY_EMAIL'
+  return `Eres el agente de reconciliación DIN para BLUEFISHING.CL.
 
-Tu misión: procesar un email con el DIN (Documento de Ingreso Nacional) y facturas de AGENSA post-despacho. Reconciliar lo que se provisionó vs. el costo real pagado en aduana.
+Tu misión: procesar un email con el DIN (Documento de Ingreso Nacional) y facturas de la agencia de aduanas post-despacho. Reconciliar lo que se provisionó vs. el costo real pagado en aduana.
 
 ## Identificación
-- From: contabilidad@agensa.cl
+- From: ${customsEmail}
 - Asunto puede contener: "DIN", "Liquidación despacho", "Factura honorarios"
 - Formato DIN chileno: 025-YYYY-XXXXXXXX-D  (ej: 025-2026-00123456-D)
 
@@ -88,11 +90,12 @@ RETURNING id
   }
 }
 `
+}
 
 export async function runDinReconciliationAgent(input: ClassifiedEmail) {
   return runAgentLoop({
     agentName: 'din_reconciliation',
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildSystemPrompt(),
     tools: [supabaseTool],
     toolHandlers,
     input,

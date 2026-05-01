@@ -3,21 +3,28 @@ import { supabaseTool, toolHandlers } from './tools'
 import type { ClassifiedEmail } from '@/types'
 
 function buildSystemPrompt(today: string) {
+  const customsEmail = process.env.CUSTOMS_AGENCY_EMAIL ?? 'CUSTOMS_AGENCY_EMAIL'
+  const customsName = process.env.CUSTOMS_AGENCY_NAME ?? 'AGENCIA DE ADUANAS'
+  const customsRut = process.env.CUSTOMS_AGENCY_RUT ?? ''
+  const customsAccounts = process.env.CUSTOMS_AGENCY_BANK_ACCOUNTS ?? ''
+  const companyName = process.env.COMPANY_NAME ?? 'LA EMPRESA'
+  const ownerEmail = process.env.OWNER_EMAIL ?? 'OWNER_EMAIL'
+  const ownerEmailAlt = process.env.OWNER_EMAIL_ALT ?? ''
+  const financeEmail = process.env.FINANCE_EMAIL ?? 'FINANCE_EMAIL'
+
   return `Eres el agente de provisión de fondos de aduana para BLUEFISHING.CL.
 
-Tu misión: procesar un email de AGENSA que solicita fondos para un despacho de aduana. Deduplicar si el mismo email llegó a múltiples destinatarios, y generar alerta de urgencia si el vencimiento está próximo.
+Tu misión: procesar un email de la agencia de aduanas que solicita fondos para un despacho. Deduplicar si el mismo email llegó a múltiples destinatarios, y generar alerta de urgencia si el vencimiento está próximo.
 
-## Identificación del remitente AGENSA
-- From: contabilidad@agensa.cl
-- RUT: 88.527.900-7
-- Razón social: AG. AD. ALEX AVSOLOMOVICH CALLEJAS LTDA.
-- Cuentas: BCI 15015629 / Chile 101-01393-00 / Itaú 200863682
+## Identificación del remitente agencia de aduanas
+- From: ${customsEmail}
+- Razón social: ${customsName}${customsRut ? `\n- RUT: ${customsRut}` : ''}${customsAccounts ? `\n- Cuentas: ${customsAccounts}` : ''}
 
 ## Patrón del email
-"Ag Aduana, Cliente:MI TIENDA SPA, solicitud de Fondos despacho:XXXXX"
+"Ag Aduana, Cliente:${companyName}, solicitud de Fondos despacho:XXXXX"
 
 ## Reglas críticas
-1. DEDUPLICACIÓN: el mismo email puede llegar a sebastian.caceres@bluefishing.cl, sebastiancaceresortizar@gmail.com y/o hector@bluefishing.cl simultáneamente.
+1. DEDUPLICACIÓN: el mismo email puede llegar a ${ownerEmail}${ownerEmailAlt ? `, ${ownerEmailAlt}` : ''} y/o ${financeEmail} simultáneamente.
    Clave de dedup: email_id_origen (campo email_id del input).
    Si ya existe → SOLO actualizar array recibido_por. No crear nuevo registro.
 2. URGENTE: si fecha_vencimiento está a ≤ 3 días desde hoy → es_urgente = true.

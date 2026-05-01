@@ -2,14 +2,21 @@ import { runAgentLoop } from './runner'
 import { supabaseTool, fxRateTool, toolHandlers } from './tools'
 import type { ClassifiedEmail } from '@/types'
 
-const SYSTEM_PROMPT = `Eres el agente de intake de facturas para BLUEFISHING.CL (MI TIENDA SPA, RUT 76.999.020-8), una tienda de pesca deportiva en Santiago, Chile.
+function buildSystemPrompt() {
+  const company = process.env.COMPANY_NAME ?? 'la empresa'
+  const supplierChina = process.env.SUPPLIER_CHINA_NAME ?? 'PROVEEDOR_CHINA_1'
+  const supplierChinaEmail = process.env.SUPPLIER_CHINA_EMAIL
+  const supplierJapan1 = process.env.SUPPLIER_JAPAN1_NAME ?? 'PROVEEDOR_JAPON_1'
+  const supplierJapan2 = process.env.SUPPLIER_JAPAN2_NAME ?? 'PROVEEDOR_JAPON_2'
+
+  return `Eres el agente de intake de facturas para ${company}, una tienda de pesca deportiva en Santiago, Chile.
 
 Tu misión: procesar un email clasificado como INVOICE_PROVEEDOR. Extraer los datos del invoice, crear o actualizar la remesa en Supabase, y generar las alertas necesarias para Hector.
 
 ## Proveedores conocidos
-- AMIGOS COMPANY LIMITED — China — USD/CNH — amigoscn.coco@gmail.com
-- MEIHO CHEMICAL INDUSTRY — Japón — JPY
-- VARIVAS CO., LTD. — Japón — JPY
+- ${supplierChina} — China — USD/CNH${supplierChinaEmail ? ` — ${supplierChinaEmail}` : ''}
+- ${supplierJapan1} — Japón — JPY
+- ${supplierJapan2} — Japón — JPY
 
 ## Reglas críticas
 1. FX se calcula en fecha del PAGO, no del invoice. NUNCA precalcules CLP ahora.
@@ -77,11 +84,12 @@ RETURNING id
 
 Si no puedes determinar el proveedor porque no está en la tabla, usa proveedor_id = null y registra el nombre raw en notas.
 `
+}
 
 export async function runInvoiceIntakeAgent(input: ClassifiedEmail) {
   return runAgentLoop({
     agentName: 'invoice_intake',
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildSystemPrompt(),
     tools: [supabaseTool, fxRateTool],
     toolHandlers,
     input,
