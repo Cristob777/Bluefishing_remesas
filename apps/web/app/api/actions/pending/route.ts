@@ -135,7 +135,7 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
     // 5. CONFIRMAR_PROVISION — provisiones de AGENSA pendientes de confirmar
     const { data: provisiones } = await supabase
       .from('provisiones_fondos')
-      .select('*')
+      .select('id, estado, monto_clp, fecha_vencimiento, numero_despacho, remesa_id, created_at')
       .eq('estado', 'PENDIENTE')
 
     provisiones?.forEach(p => {
@@ -160,7 +160,7 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
     // 6. INGRESAR_STOCK — recepciones pendientes de conteo
     const { data: recepciones } = await supabase
       .from('stock_recepciones')
-      .select('*, items:stock_items(id, sku, descripcion, cantidad_invoice), remesa:remesas(numero_invoice, proveedor:proveedores(nombre))')
+      .select('id, remesa_id, estado, fecha_recepcion, created_at, items:stock_items(id, sku, descripcion, cantidad_invoice), remesa:remesas(numero_invoice, proveedor:proveedores(nombre))')
       .eq('estado', 'PENDIENTE')
 
     recepciones?.forEach(rec => {

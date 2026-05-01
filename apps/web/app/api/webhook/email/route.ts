@@ -60,6 +60,13 @@ export async function POST(req: NextRequest) {
   // 5. Sanitizar y procesar
   const payload = sanitizePayload(rawPayload as WebhookEmailPayload)
 
+  // 5b. Sender domain whitelist — reject spoofed senders before any DB write
+  const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS ?? '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean)
+  const senderDomain = payload.email_from?.split('@')[1]?.toLowerCase() ?? ''
+  if (ALLOWED_DOMAINS.length > 0 && !ALLOWED_DOMAINS.some(d => senderDomain === d || senderDomain.endsWith(`.${d}`))) {
+    return NextResponse.json({ status: 'ignored', reason: 'sender_not_whitelisted' })
+  }
+
   // Clasificar email
   const classified = await classifyEmail(payload)
 
