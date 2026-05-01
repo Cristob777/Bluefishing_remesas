@@ -5,6 +5,7 @@ import { clsx } from 'clsx'
 import { Plus, X, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { createBrowserClient } from '@/lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -100,7 +101,114 @@ const PAGO_ESTADO_COLOR: Record<string, { color: string; bg: string }> = {
   CONFIRMADO: { color: '#059669', bg: '#ECFDF5' },
 }
 
-function SidePanel({ remesa, onClose }: { remesa: Remesa; onClose: () => void }) {
+const AGENT_COLOR: Record<string, string> = {
+  invoice_intake:     '#4F46E5',
+  customs_funds:      '#D97706',
+  din_reconciliation: '#7C3AED',
+  landed_cost:        '#059669',
+  manual_action:      '#525252',
+}
+
+interface TimelineEntry { agent_name: string; accion: string; resultado: string | null; created_at: string }
+interface ReconcData { provision_pagada_clp: number; costo_real_clp: number }
+
+const TOLERANCIA_CLP = 50_000
+
+function ReconciliacionMeter({ data }: { data: ReconcData }) {
+  const delta   = data.costo_real_clp - data.provision_pagada_clp
+  const absDelta = Math.abs(delta)
+  const pct     = Math.min((absDelta / TOLERANCIA_CLP) * 100, 100)
+  const ok      = absDelta <= TOLERANCIA_CLP
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#A3A3A3' }}>
+        Reconciliación DIN
+      </p>
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E7E5E4' }}>
+        {[
+          { label: 'Provisión pagada', value: data.provision_pagada_clp },
+          { label: 'Costo real (DIN)',  value: data.costo_real_clp },
+        ].map((row, i) => (
+          <div key={row.label} className="flex items-center justify-between px-4 py-2.5"
+               style={{ borderBottom: i === 0 ? '1px solid #F5F5F4' : 'none', background: '#FAFAF9' }}>
+            <span className="text-[11px]" style={{ color: '#525252' }}>{row.label}</span>
+            <span className="text-xs font-bold mono" style={{ color: '#0A0A0A' }}>
+              {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(row.value)}
+            </span>
+          </div>
+        ))}
+        <div className="px-4 py-3" style={{ background: ok ? '#F0FDF4' : '#FEF2F2', borderTop: `1px solid ${ok ? '#BBF7D0' : '#FECACA'}` }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-semibold" style={{ color: ok ? '#059669' : '#DC2626' }}>
+              Delta {delta >= 0 ? '+' : ''}{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(delta)}
+            </span>
+            <span className="text-[10px] mono" style={{ color: '#A3A3A3' }}>
+              {ok ? `${Math.round(pct)}% tolerancia` : 'EXCEDE tolerancia'}
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: ok ? '#D1FAE5' : '#FECACA' }}>
+            <div className="h-full rounded-full transition-all"
+                 style={{ width: `${pct}%`, background: ok ? '#059669' : '#DC2626' }} />
+          </div>
+          <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>
+            Tolerancia: {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(TOLERANCIA_CLP)}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AgentTimeline({ entries }: { entries: TimelineEntry[] }) {
+  if (!entries.length) return null
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#A3A3A3' }}>
+        Historial de agentes
+      </p>
+      <div className="relative pl-4">
+        <div className="absolute left-1.5 top-0 bottom-0 w-px" style={{ background: '#E7E5E4' }} />
+        {entries.map((e, i) => {
+          const color = AGENT_COLOR[e.agent_name] ?? '#525252'
+          const ok    = e.resultado === 'SUCCESS'
+          return (
+            <div key={i} className="relative flex items-start gap-3 pb-3">
+              <div className="absolute -left-2.5 top-1 w-2 h-2 rounded-full border-2 border-white flex-shrink-0"
+                   style={{ background: ok ? color : '#DC2626' }} />
+              <div className="flex-1 min-w-0 pt-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold" style={{ color }}>
+                    {e.agent_name.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-[10px]" style={{ color: '#A3A3A3' }}>
+                    {new Date(e.created_at).toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <p className="text-xs mt-0.5" style={{ color: '#525252' }}>
+                  {e.accion.replace(/_/g, ' ')}
+                </p>
+              </div>
+              <span className="text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded"
+                    style={{ background: ok ? '#ECFDF5' : '#FEF2F2', color: ok ? '#059669' : '#DC2626' }}>
+                {e.resultado ?? '—'}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SidePanel({
+  remesa, onClose, timeline, reconciliacion,
+}: {
+  remesa: Remesa
+  onClose: () => void
+  timeline: TimelineEntry[]
+  reconciliacion: ReconcData | null
+}) {
   const currentIdx = PIPELINE_STEPS.findIndex(s => s.key === remesa.estado)
   const hasUrgent  = remesa.alertas?.some(a => a.urgente && !a.leida)
 
@@ -249,6 +357,12 @@ function SidePanel({ remesa, onClose }: { remesa: Remesa; onClose: () => void })
               <p className="text-xs" style={{ color: '#525252' }}>{remesa.notas}</p>
             </div>
           )}
+
+          {/* Reconciliation meter — only when DIN present */}
+          {reconciliacion && <ReconciliacionMeter data={reconciliacion} />}
+
+          {/* Agent timeline */}
+          <AgentTimeline entries={timeline} />
         </div>
       </div>
     </>
@@ -258,10 +372,12 @@ function SidePanel({ remesa, onClose }: { remesa: Remesa; onClose: () => void })
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function RemesasPage() {
-  const [remesas, setRemesas]       = useState<Remesa[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [filter, setFilter]         = useState(0)
-  const [selected, setSelected]     = useState<Remesa | null>(null)
+  const [remesas, setRemesas]           = useState<Remesa[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [filter, setFilter]             = useState(0)
+  const [selected, setSelected]         = useState<Remesa | null>(null)
+  const [remesaTimeline, setTimeline]   = useState<TimelineEntry[]>([])
+  const [reconciliacion, setReconc]     = useState<ReconcData | null>(null)
 
   useEffect(() => {
     fetch('/api/remesas?limit=100')
@@ -270,6 +386,45 @@ export default function RemesasPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!selected) { setTimeline([]); setReconc(null); return }
+    const supabase = createBrowserClient()
+
+    supabase
+      .from('agent_logs')
+      .select('agent_name, accion, resultado, created_at')
+      .eq('remesa_id', selected.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => setTimeline(data ?? []))
+
+    if (selected.din_numero) {
+      Promise.all([
+        supabase
+          .from('provisiones_fondos')
+          .select('monto_clp')
+          .eq('remesa_id', selected.id)
+          .in('estado', ['PAGADO', 'CONFIRMADO']),
+        supabase
+          .from('agent_logs')
+          .select('payload')
+          .eq('remesa_id', selected.id)
+          .eq('agent_name', 'din_reconciliation')
+          .eq('resultado', 'SUCCESS')
+          .order('created_at', { ascending: false })
+          .limit(1),
+      ]).then(([{ data: provs }, { data: dinLogs }]) => {
+        const provision_pagada_clp = (provs ?? []).reduce((sum, p) => sum + (p.monto_clp ?? 0), 0)
+        const payload = dinLogs?.[0]?.payload as Record<string, unknown> | null
+        const costo_real_clp = (payload?.costo_total_clp ?? payload?.costo_real_clp ?? null) as number | null
+        if (provision_pagada_clp > 0 && costo_real_clp !== null) {
+          setReconc({ provision_pagada_clp, costo_real_clp })
+        }
+      })
+    } else {
+      setReconc(null)
+    }
+  }, [selected])
 
   const grupo    = FILTER_GROUPS[filter]
   const filtered = grupo.estados
@@ -419,7 +574,14 @@ export default function RemesasPage() {
       </div>
 
       {/* Side panel */}
-      {selected && <SidePanel remesa={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <SidePanel
+          remesa={selected}
+          onClose={() => setSelected(null)}
+          timeline={remesaTimeline}
+          reconciliacion={reconciliacion}
+        />
+      )}
     </div>
   )
 }

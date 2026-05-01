@@ -33,6 +33,8 @@ export interface ConfirmarProvisionAction {
   title: string; description: string
   provision_id: string; numero_despacho: string
   monto_clp: number; fecha_vencimiento: string; dias_restantes: number
+  cuentas_agencia?: string
+  nombre_agencia?: string
   urgente: boolean; created_at: string
 }
 
@@ -66,6 +68,7 @@ export interface AprobarOperacionAction {
   title: string; description: string
   invoice: string; remesa_id: string; proveedor: string
   monto_original: number; moneda: string; monto_clp_estimado: number
+  agent_reasoning?: string
   urgente: boolean; created_at: string
 }
 
@@ -228,7 +231,7 @@ export const MOCK_PENDING_ACTIONS: PendingAction[] = [
     description: 'OCEAN GEAR SUPPLIES — OGS-2026-0412 — 20 unidades faltantes',
     invoice: 'OGS-2026-0412', remesa_id: '1',
     proveedor: 'OCEAN GEAR SUPPLIES CO.',
-    contacto_email: 'amigoscn.coco@gmail.com',
+    contacto_email: null,
     urgente: false, created_at: '2026-04-20T11:00:00Z',
     diferencias: [
       { sku: 'OG-DM80', descripcion: 'Destorcedor Metal 80lb',     cantidad_invoice: 120, cantidad_recibida: 100, diferencia: -20 },

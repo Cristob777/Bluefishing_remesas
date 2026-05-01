@@ -16,7 +16,6 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
 
   const supabase = sb()
   const actions: unknown[] = []
-  const actions: unknown[] = []
 
   try {
     // 1. INSTRUCCION_PAGO — remesas recibidas sin instrucción de pago (sin pagos aún)
@@ -145,12 +144,14 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
         id:                `provision-${p.id}`,
         type:              'CONFIRMAR_PROVISION',
         title:             `Provisión fondos — ${p.numero_despacho ?? '—'}`,
-        description:       `AGENSA solicita ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(p.monto_clp)} · vence en ${dias}d`,
+        description:       `Ag. Aduanas solicita ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(p.monto_clp)} · vence en ${dias}d`,
         provision_id:      p.id,
         numero_despacho:   p.numero_despacho ?? '—',
         monto_clp:         p.monto_clp,
         fecha_vencimiento: p.fecha_vencimiento,
         dias_restantes:    dias,
+        nombre_agencia:    process.env.CUSTOMS_AGENCY_NAME ?? 'Agencia de Aduanas',
+        cuentas_agencia:   process.env.CUSTOMS_AGENCY_BANK_ACCOUNTS ?? '',
         urgente:           dias <= 3,
         created_at:        p.created_at,
       })
@@ -254,6 +255,32 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
           })
         })
     }
+
+    // 9. APROBAR_OPERACION — alertas de aprobación requerida (operaciones > CLP 5M)
+    const { data: alertasAprobacion } = await supabase
+      .from('alertas')
+      .select('*, remesa:remesas(numero_invoice, monto_original, moneda_origen, proveedor:proveedores(nombre))')
+      .eq('tipo', 'APROBACION_REQUERIDA')
+      .eq('leida', false)
+
+    alertasAprobacion?.forEach(a => {
+      const r = a.remesa as { numero_invoice?: string; monto_original?: number; moneda_origen?: string; proveedor?: { nombre?: string } } | null
+      actions.push({
+        id:                 `aprobar-${a.id}`,
+        type:               'APROBAR_OPERACION',
+        title:              `Aprobación requerida — ${r?.numero_invoice ?? '—'}`,
+        description:        a.mensaje,
+        invoice:            r?.numero_invoice ?? '—',
+        remesa_id:          a.remesa_id ?? '',
+        proveedor:          r?.proveedor?.nombre ?? '—',
+        monto_original:     r?.monto_original ?? 0,
+        moneda:             r?.moneda_origen ?? 'USD',
+        monto_clp_estimado: 0,
+        agent_reasoning:    a.mensaje,
+        urgente:            a.urgente ?? true,
+        created_at:         a.created_at,
+      })
+    })
 
   } catch {
     // DB not connected — return empty

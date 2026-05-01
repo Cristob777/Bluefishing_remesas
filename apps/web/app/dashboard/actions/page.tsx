@@ -251,14 +251,45 @@ function ConfirmarProvisionForm({ action, onSubmit }: { action: ConfirmarProvisi
         </div>
       </div>
 
-      <div className="rounded-xl p-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
-        <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#9CA3AF' }}>Cuentas AGENSA — AG. AD. ALEX AVSOLOMOVICH CALLEJAS LTDA.</p>
-        <div className="flex gap-4 flex-wrap">
-          {['BCI 15015629', 'Chile 101-01393-00', 'Itaú 200863682'].map(c => (
-            <span key={c} className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: '#E5E7EB', color: '#374151' }}>{c}</span>
+      {/* IVA Chile 19% breakdown */}
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
+        <div className="px-4 py-2.5" style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>
+            Desglose estimado — IVA Art. 46 DL 825
+          </p>
+        </div>
+        <div className="grid grid-cols-3 divide-x" style={{ borderColor: '#E5E7EB' }}>
+          {[
+            { label: 'Base + aranceles', value: fmtCLP(Math.round(action.monto_clp / 1.19)) },
+            { label: 'IVA importación 19%', value: fmtCLP(action.monto_clp - Math.round(action.monto_clp / 1.19)) },
+            { label: 'Total a pagar', value: fmtCLP(action.monto_clp) },
+          ].map(row => (
+            <div key={row.label} className="px-3 py-2.5">
+              <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>{row.label}</p>
+              <p className="text-xs font-bold mono" style={{ color: '#374151' }}>{row.value}</p>
+            </div>
           ))}
         </div>
+        <div className="px-4 py-2" style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}>
+          <p className="text-[10px]" style={{ color: '#92400E' }}>
+            El monto incluye derechos de aduana, IVA importación (19%) y honorarios de agencia. El desglose exacto estará en el DIN.
+          </p>
+        </div>
       </div>
+
+      {/* Cuentas bancarias de la agencia */}
+      {action.cuentas_agencia && (
+        <div className="rounded-xl p-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#9CA3AF' }}>
+            Cuentas — {action.nombre_agencia ?? 'Agencia de Aduanas'}
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {action.cuentas_agencia.split('/').map(c => c.trim()).filter(Boolean).map(c => (
+              <span key={c} className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: '#E5E7EB', color: '#374151' }}>{c}</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Fecha en que se realizó el pago</label>
@@ -457,9 +488,22 @@ function AprobarOperacionForm({ action, onSubmit }: { action: AprobarOperacionAc
         <div className="grid grid-cols-3 gap-3 px-4 py-3" style={{ background: '#F9FAFB' }}>
           <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Proveedor</p><p className="text-xs font-semibold" style={{ color: '#111827' }}>{action.proveedor}</p></div>
           <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Monto origen</p><p className="text-sm font-bold" style={{ color: '#374151' }}>{fmtAmt(action.monto_original, action.moneda)}</p></div>
-          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Estimado CLP</p><p className="text-sm font-bold" style={{ color: '#C2410C' }}>{fmtCLP(action.monto_clp_estimado)}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Estimado CLP</p><p className="text-sm font-bold" style={{ color: '#C2410C' }}>{action.monto_clp_estimado > 0 ? fmtCLP(action.monto_clp_estimado) : '—'}</p></div>
         </div>
       </div>
+
+      {/* Numra-style: agent reasoning context */}
+      {action.agent_reasoning && (
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
+          <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+            <span className="text-base">🤖</span>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Por qué el agente flaggeó esta operación</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs leading-relaxed" style={{ color: '#374151' }}>{action.agent_reasoning}</p>
+          </div>
+        </div>
+      )}
 
       <div>
         <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#374151' }}>Decisión</p>

@@ -26,7 +26,58 @@ interface AgentLog {
   accion: string
   resultado: string | null
   session_id?: string
+  remesa_id?: string | null
+  payload?: Record<string, unknown> | null
+  error_mensaje?: string | null
   created_at: string
+}
+
+function ReasoningPanel({ log }: { log: AgentLog }) {
+  const p = log.payload
+  if (!p && !log.error_mensaje) return null
+
+  const entries = p ? Object.entries(p).filter(([, v]) => v !== null && v !== undefined) : []
+
+  function renderVal(v: unknown): string {
+    if (typeof v === 'object' && v !== null) return JSON.stringify(v, null, 2)
+    if (typeof v === 'number') return v.toLocaleString('es-CL')
+    return String(v)
+  }
+
+  return (
+    <div className="px-5 pb-4 pt-2 space-y-3" style={{ borderTop: '1px solid #F5F5F4' }}>
+      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#A3A3A3' }}>
+        Razonamiento del agente
+      </p>
+
+      {log.error_mensaje && (
+        <div className="rounded-lg px-3 py-2 text-xs font-mono" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+          {log.error_mensaje}
+        </div>
+      )}
+
+      {entries.length > 0 && (
+        <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #E7E5E4' }}>
+          {entries.map(([k, v], i) => (
+            <div
+              key={k}
+              className="grid gap-3 px-3 py-2"
+              style={{
+                gridTemplateColumns: '140px 1fr',
+                borderBottom: i < entries.length - 1 ? '1px solid #F5F5F4' : 'none',
+                background: i % 2 === 0 ? '#FAFAF9' : '#FFF',
+              }}
+            >
+              <span className="text-[10px] font-semibold mono truncate" style={{ color: '#A3A3A3' }}>{k}</span>
+              <span className="text-[11px] mono break-all" style={{ color: '#0A0A0A', whiteSpace: typeof v === 'object' ? 'pre-wrap' : 'normal' }}>
+                {renderVal(v)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function relTime(iso: string) {
@@ -40,9 +91,10 @@ function relTime(iso: string) {
 }
 
 export default function AgentsPage() {
-  const [logs, setLogs]       = useState<AgentLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const newIds                = useRef<Set<string>>(new Set())
+  const [logs, setLogs]             = useState<AgentLog[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const newIds                      = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     const supabase = createBrowserClient()
@@ -177,37 +229,55 @@ export default function AgentsPage() {
           ) : (
             <div className="divide-y" style={{ borderColor: '#F5F5F4' }}>
               {logs.map(l => {
-                const meta  = AGENT_META[l.agent_name]
-                const isNew = newIds.current.has(l.id)
+                const meta       = AGENT_META[l.agent_name]
+                const isNew      = newIds.current.has(l.id)
+                const isExpanded = expandedId === l.id
+                const hasPayload = !!(l.payload || l.error_mensaje)
+
                 return (
                   <div
                     key={l.id}
-                    className={`flex items-center gap-4 px-5 py-3 transition-colors ${isNew ? 'animate-fade-in' : ''}`}
-                    style={{ background: isNew ? 'rgba(79,70,229,0.04)' : undefined }}
+                    className={isNew ? 'animate-fade-in' : ''}
+                    style={{ background: isExpanded ? 'rgba(79,70,229,0.02)' : isNew ? 'rgba(79,70,229,0.04)' : undefined }}
                   >
-                    <span className="text-[10px] mono flex-shrink-0 w-12 text-right" style={{ color: '#A3A3A3' }}>
-                      {relTime(l.created_at)}
-                    </span>
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                      style={{ background: meta?.bg ?? '#F5F5F4', color: meta?.color ?? '#525252' }}
+                    <button
+                      className="w-full flex items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-gray-50"
+                      onClick={() => hasPayload && setExpandedId(isExpanded ? null : l.id)}
+                      style={{ cursor: hasPayload ? 'pointer' : 'default' }}
                     >
-                      {meta?.label ?? l.agent_name}
-                    </span>
-                    <span className="text-xs font-medium flex-1 truncate" style={{ color: '#0A0A0A' }}>
-                      {l.accion.replace(/_/g, ' ')}
-                    </span>
-                    {l.session_id && (
-                      <span className="text-[10px] mono truncate max-w-[100px] hidden xl:block" style={{ color: '#A3A3A3' }}>
-                        {l.session_id.slice(0, 8)}
+                      <span className="text-[10px] mono flex-shrink-0 w-12 text-right" style={{ color: '#A3A3A3' }}>
+                        {relTime(l.created_at)}
                       </span>
-                    )}
-                    <Badge
-                      variant={l.resultado === 'SUCCESS' ? 'success' : l.resultado === 'ERROR' ? 'urgent' : 'pending'}
-                      size="sm"
-                    >
-                      {l.resultado === 'PENDING_APPROVAL' ? 'Aprobación' : (l.resultado ?? '—')}
-                    </Badge>
+                      <span
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                        style={{ background: meta?.bg ?? '#F5F5F4', color: meta?.color ?? '#525252' }}
+                      >
+                        {meta?.label ?? l.agent_name}
+                      </span>
+                      <span className="text-xs font-medium flex-1 truncate" style={{ color: '#0A0A0A' }}>
+                        {l.accion.replace(/_/g, ' ')}
+                      </span>
+                      {l.session_id && (
+                        <span className="text-[10px] mono truncate max-w-[100px] hidden xl:block" style={{ color: '#A3A3A3' }}>
+                          {l.session_id.slice(0, 8)}
+                        </span>
+                      )}
+                      <Badge
+                        variant={l.resultado === 'SUCCESS' ? 'success' : l.resultado === 'ERROR' ? 'urgent' : 'pending'}
+                        size="sm"
+                      >
+                        {l.resultado === 'PENDING_APPROVAL' ? 'Aprobación' : (l.resultado ?? '—')}
+                      </Badge>
+                      {hasPayload && (
+                        <span
+                          className="text-[10px] flex-shrink-0 transition-transform duration-200"
+                          style={{ color: '#A3A3A3', transform: isExpanded ? 'rotate(90deg)' : 'none' }}
+                        >
+                          ›
+                        </span>
+                      )}
+                    </button>
+                    {isExpanded && <ReasoningPanel log={l} />}
                   </div>
                 )
               })}

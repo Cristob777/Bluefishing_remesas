@@ -26,37 +26,6 @@ const ESTADO_LABEL: Record<string, string> = {
   CONTADO:         'Contado',
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MOCK_RECEPCIONES: any[] = [
-  {
-    id: 'mock-1', remesa_id: 'rem-1',
-    fecha_recepcion: '2026-04-20T10:00:00Z', estado: 'PENDIENTE',
-    remesa: { numero_invoice: 'AMIGOS-2026-004', proveedor: { nombre: 'AMIGOS COMPANY LIMITED' } },
-    items: [
-      { id: 'i1', recepcion_id: 'mock-1', sku: 'AMG-HOOK-01', descripcion: 'Anzuelos Standard #4', cantidad_invoice: 500, cantidad_recibida: 500, diferencia: 0 },
-      { id: 'i2', recepcion_id: 'mock-1', sku: 'AMG-SWIVEL-8', descripcion: 'Destorcedores Metal 80lb', cantidad_invoice: 1000, cantidad_recibida: 980, diferencia: -20 },
-      { id: 'i3', recepcion_id: 'mock-1', sku: 'AMG-LURE-120', descripcion: 'Señuelo 120mm', cantidad_invoice: 200, cantidad_recibida: 200, diferencia: 0 },
-    ],
-  },
-  {
-    id: 'mock-2', remesa_id: 'rem-2',
-    fecha_recepcion: '2026-04-18T14:30:00Z', estado: 'CON_DIFERENCIAS',
-    remesa: { numero_invoice: 'MHO-2026-011', proveedor: { nombre: 'MEIHO CHEMICAL INDUSTRY' } },
-    items: [
-      { id: 'i4', recepcion_id: 'mock-2', sku: 'MHO-BOX-5000', descripcion: 'Caja Almacenamiento VS-5000', cantidad_invoice: 50, cantidad_recibida: 45, diferencia: -5 },
-      { id: 'i5', recepcion_id: 'mock-2', sku: 'MHO-TRAY-3010', descripcion: 'Bandeja Organizadora', cantidad_invoice: 120, cantidad_recibida: 125, diferencia: 5 },
-    ],
-  },
-  {
-    id: 'mock-3', remesa_id: 'rem-3',
-    fecha_recepcion: '2026-04-15T09:15:00Z', estado: 'INGRESADO_BSALE',
-    remesa: { numero_invoice: 'VAR-2026-002', proveedor: { nombre: 'VARIVAS CO., LTD.' } },
-    items: [
-      { id: 'i6', recepcion_id: 'mock-3', sku: 'VAR-LINE-PE4', descripcion: 'Línea PE #4 200m', cantidad_invoice: 30, cantidad_recibida: 30, diferencia: 0 },
-      { id: 'i7', recepcion_id: 'mock-3', sku: 'VAR-LEADER-50', descripcion: 'Leader 50lb', cantidad_invoice: 50, cantidad_recibida: 50, diferencia: 0 },
-    ],
-  },
-]
 
 function DiffBar({ diff, total }: { diff: number; total: number }) {
   if (diff === 0) return <span style={{ color: '#059669' }}>—</span>
@@ -92,8 +61,8 @@ export default function StockPage() {
   const load = useCallback(() => {
     fetch('/api/stock/all')
       .then(r => r.json())
-      .then(d => setRecepciones(d.recepciones?.length ? d.recepciones : MOCK_RECEPCIONES))
-      .catch(() => setRecepciones(MOCK_RECEPCIONES))
+      .then(d => setRecepciones(d.recepciones ?? []))
+      .catch(() => setRecepciones([]))
       .finally(() => setLoading(false))
   }, [])
 
