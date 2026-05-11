@@ -9,20 +9,23 @@ export type RemesaEstado =
   | 'PROVISION_RECIBIDA'
   | 'MERCADERIA_RECIBIDA'
   | 'RECONCILIADO'
+  | 'SALDO_FAVOR'   // provisión > costo real → esperando nota de débito AGENSA
 
 export type PagoEstado = 'PENDIENTE' | 'EMITIDO' | 'CONFIRMADO'
 export type PagoTipo = 'ANTICIPO' | 'SALDO' | 'UNICO'
-export type DocumentoTipo = 'INVOICE' | 'DIN' | 'FACTURA_AGENSA' | 'PROVISION' | 'OTRO'
+export type DocumentoTipo = 'INVOICE' | 'DIN' | 'FACTURA_AGENSA' | 'PROVISION' | 'NOTA_DEBITO' | 'OTRO'
 export type AlertaTipo =
   | 'PROVISION_URGENTE'
   | 'PAGO_PENDIENTE'
   | 'DIFERENCIA_STOCK'
   | 'APROBACION_REQUERIDA'
+  | 'SALDO_FAVOR_AGENSA'  // provisión pagó de más → nota de débito pendiente
 
 export type AgentName =
   | 'invoice_intake'
   | 'customs_funds'
   | 'din_reconciliation'
+  | 'nota_debito'
   | 'landed_cost'
 
 export type EmailCategory =
@@ -30,6 +33,7 @@ export type EmailCategory =
   | 'INSTRUCCION_PAGO'
   | 'PROVISION_FONDOS'
   | 'DIN_DESPACHO'
+  | 'NOTA_DEBITO_AGENSA'  // AGENSA devuelve saldo a favor por provisión > costo real
   | 'UNKNOWN'
 
 export interface Proveedor {

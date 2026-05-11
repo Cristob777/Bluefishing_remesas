@@ -2,6 +2,7 @@ import type { AgentName, EmailCategory, ClassifiedEmail } from '@/types'
 import { runInvoiceIntakeAgent } from './agents/invoice-intake'
 import { runCustomsFundsAgent } from './agents/customs-funds'
 import { runDinReconciliationAgent } from './agents/din-reconciliation'
+import { runNotaDebitoAgent } from './agents/nota-debito'
 import { runLandedCostAgent } from './agents/landed-cost'
 
 export interface AgentTriggerResult {
@@ -37,6 +38,10 @@ export async function triggerAgent(
         break
       }
 
+      case 'nota_debito':
+        result = await runNotaDebitoAgent(input)
+        break
+
       case 'landed_cost':
         // Normally triggered via din_reconciliation chain, but can be called manually
         result = await runLandedCostAgent(
@@ -71,9 +76,10 @@ export async function triggerAgent(
 
 export function categoryToAgent(category: EmailCategory): AgentName | null {
   const map: Partial<Record<EmailCategory, AgentName>> = {
-    INVOICE_PROVEEDOR: 'invoice_intake',
-    PROVISION_FONDOS: 'customs_funds',
-    DIN_DESPACHO: 'din_reconciliation',
+    INVOICE_PROVEEDOR:  'invoice_intake',
+    PROVISION_FONDOS:   'customs_funds',
+    DIN_DESPACHO:       'din_reconciliation',
+    NOTA_DEBITO_AGENSA: 'nota_debito',
   }
   return map[category] ?? null
 }
