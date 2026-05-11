@@ -25,12 +25,21 @@ function getAccounts(): ImapAccount[] {
   const port = parseInt(process.env.IMAP_PORT ?? '993', 10)
   const accounts: ImapAccount[] = []
 
-  if (process.env.IMAP_USER_SEBASTIAN && process.env.IMAP_PASS_SEBASTIAN) {
-    accounts.push({ label: 'sebastian', host, port, user: process.env.IMAP_USER_SEBASTIAN, password: process.env.IMAP_PASS_SEBASTIAN })
+  // Each slot: env var names + which label to assign
+  const slots: Array<{ label: ImapAccount['label']; userKey: string; passKey: string }> = [
+    { label: 'sebastian', userKey: 'IMAP_USER_SEBASTIAN',  passKey: 'IMAP_PASS_SEBASTIAN'  },
+    { label: 'sebastian', userKey: 'IMAP_USER_CRISTOBAL',  passKey: 'IMAP_PASS_CRISTOBAL'  },
+    { label: 'hector',   userKey: 'IMAP_USER_HECTOR',     passKey: 'IMAP_PASS_HECTOR'     },
+  ]
+
+  for (const { label, userKey, passKey } of slots) {
+    const user = process.env[userKey]
+    const pass = process.env[passKey]
+    if (user && pass && !accounts.some(a => a.user === user)) {
+      accounts.push({ label, host, port, user, password: pass })
+    }
   }
-  if (process.env.IMAP_USER_HECTOR && process.env.IMAP_PASS_HECTOR) {
-    accounts.push({ label: 'hector', host, port, user: process.env.IMAP_USER_HECTOR, password: process.env.IMAP_PASS_HECTOR })
-  }
+
   return accounts
 }
 
@@ -76,11 +85,14 @@ function htmlToText(html: string): string {
 
 export async function pollImapAccount(account: ImapAccount): Promise<ExtractedEmail[]> {
   const client = new ImapFlow({
-    host:   account.host,
-    port:   account.port,
-    secure: true,
-    auth:   { user: account.user, pass: account.password },
-    logger: false,
+    host:              account.host,
+    port:              account.port,
+    secure:            true,
+    auth:              { user: account.user, pass: account.password },
+    logger:            false,
+    connectionTimeout: 30000,
+    greetingTimeout:   25000,
+    socketTimeout:     45000,
   })
 
   const emails: ExtractedEmail[] = []

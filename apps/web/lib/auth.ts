@@ -9,11 +9,16 @@ export interface AuthUser {
   role:  UserRole
 }
 
-const ROLE_MAP: Record<string, UserRole> = {
-  'sebastian.caceres@bluefishing.cl':  'owner',
-  'sebastiancaceresortizar@gmail.com': 'owner',
-  'hector@bluefishing.cl':             'finance',
+function buildRoleMap(): Record<string, UserRole> {
+  const map: Record<string, UserRole> = {}
+  const owners  = (process.env.OWNER_EMAILS  ?? '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+  const finance = (process.env.FINANCE_EMAILS ?? '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+  for (const e of owners)  map[e] = 'owner'
+  for (const e of finance) map[e] = 'finance'
+  return map
 }
+
+const ROLE_MAP = buildRoleMap()
 
 const ALLOWED_ORIGINS = new Set([
   'https://bluefishing-agents.vercel.app',
@@ -89,10 +94,12 @@ export async function readJsonBody(req: NextRequest, maxBytes = 10_000): Promise
 
 // ── Route wrappers ────────────────────────────────────────────────────────────
 
-type RouteHandler = (req: NextRequest, user: AuthUser) => Promise<NextResponse>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RouteHandler<C = any> = (req: NextRequest, user: AuthUser, ctx: C) => Promise<NextResponse>
 
-export function withAuth(handler: RouteHandler) {
-  return async (req: NextRequest): Promise<NextResponse> => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withAuth<C = any>(handler: RouteHandler<C>) {
+  return async (req: NextRequest, ctx: C): Promise<NextResponse> => {
     const bearerHeader = req.headers.get('Authorization')?.replace('Bearer ', '').trim()
     const usingBearer  = !!bearerHeader
 
@@ -108,15 +115,16 @@ export function withAuth(handler: RouteHandler) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    return handler(req, user)
+    return handler(req, user, ctx)
   }
 }
 
-export function withRole(allowedRoles: UserRole[], handler: RouteHandler) {
-  return withAuth(async (req, user) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withRole<C = any>(allowedRoles: UserRole[], handler: RouteHandler<C>) {
+  return withAuth<C>(async (req, user, ctx) => {
     if (!allowedRoles.includes(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
-    return handler(req, user)
+    return handler(req, user, ctx)
   })
 }

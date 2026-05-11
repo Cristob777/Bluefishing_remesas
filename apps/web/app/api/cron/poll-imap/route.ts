@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { pollAllAccounts } from '@/lib/services/imap-extractor'
+import { pollAllGmailAccounts } from '@/lib/services/gmail-extractor'
 
-// Vercel Cron: runs every 5 minutes (configure in vercel.json)
 export const maxDuration = 60
 
 export async function GET(req: NextRequest) {
@@ -14,7 +13,7 @@ export async function GET(req: NextRequest) {
   const start = Date.now()
 
   try {
-    const result = await pollAllAccounts()
+    const result = await pollAllGmailAccounts()
     const duration = Date.now() - start
 
     return NextResponse.json({

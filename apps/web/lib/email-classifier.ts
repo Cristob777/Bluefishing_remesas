@@ -3,12 +3,17 @@ import type { EmailCategory, WebhookEmailPayload, ClassifiedEmail } from '@/type
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-const SYSTEM = `Eres un clasificador de emails para BLUEFISHING.CL (tienda de pesca, Santiago, Chile).
+const supplierNames  = (process.env.SUPPLIER_NAMES       ?? 'proveedores conocidos').split(',').map(s => s.trim()).join(', ')
+const customsAgency  = process.env.CUSTOMS_AGENCY_NAME   ?? 'agencia de aduana'
+const ownerName      = process.env.OWNER_NAME            ?? 'el propietario'
+const financeName    = process.env.FINANCE_NAME          ?? 'el gerente financiero'
+
+const SYSTEM = `Eres un clasificador de emails para una empresa importadora de productos de pesca deportiva en Chile.
 Clasifica el email en UNA de estas categorías:
 
-- INVOICE_PROVEEDOR  → factura/proforma de proveedor (AMIGOS COMPANY, MEIHO, VARIVAS)
-- INSTRUCCION_PAGO   → Sebastian instruye a Hector cuánto pagar y a quién
-- PROVISION_FONDOS   → AGENSA solicita fondos para despacho aduanero
+- INVOICE_PROVEEDOR  → factura/proforma de proveedor (${supplierNames})
+- INSTRUCCION_PAGO   → ${ownerName} instruye a ${financeName} cuánto pagar y a quién
+- PROVISION_FONDOS   → ${customsAgency} solicita fondos para despacho aduanero
 - DIN_DESPACHO       → llegó DIN o factura de agencia de aduana post-despacho
 - UNKNOWN            → ninguna categoría anterior
 

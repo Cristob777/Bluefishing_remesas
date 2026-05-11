@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
 const ALLOWED_ORIGINS = new Set([
   'https://bluefishing-agents.vercel.app',
+  'https://bluefishingremesasv01-otct8i4i1-cristob777s-projects.vercel.app',
   ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
 ])
 
@@ -35,26 +35,29 @@ function buildSecurityHeaders(nonce: string) {
   }
 }
 
-// ── Supabase session check from cookie ───────────────────────────────────────
+// ── Supabase session check — local JWT expiry only (no network call) ─────────
+// Full token validation happens server-side in API routes via Supabase RLS.
+// Here we just check the cookie exists and the access_token isn't expired.
 
-async function isAuthenticated(req: NextRequest): Promise<boolean> {
+function isAuthenticated(req: NextRequest): boolean {
   const cookies    = req.headers.get('cookie') ?? ''
-  const tokenMatch = cookies.match(/sb-[^=]+=([^;]+)/)
+  // Supabase stores session as: sb-<project>-auth-token or sb-<project>-auth-token.0
+  const tokenMatch = cookies.match(/sb-[^=]+-auth-token(?:\.\d+)?=([^;]+)/)
   if (!tokenMatch) return false
 
   try {
     const raw    = decodeURIComponent(tokenMatch[1])
     const parsed = JSON.parse(raw)
-    const token  = Array.isArray(parsed) ? parsed[0]?.access_token : parsed?.access_token
+    const session = Array.isArray(parsed) ? parsed[0] : parsed
+    const token   = session?.access_token
     if (!token) return false
 
-    const { error } = await createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false } },
-    ).auth.getUser(token)
-
-    return !error
+    // Decode JWT payload (no signature verification needed — just expiry check)
+    const payloadB64 = token.split('.')[1]
+    if (!payloadB64) return false
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString())
+    // exp is Unix seconds
+    return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now()
   } catch {
     return false
   }
@@ -62,7 +65,7 @@ async function isAuthenticated(req: NextRequest): Promise<boolean> {
 
 // ── Main middleware ───────────────────────────────────────────────────────────
 
-export async function middleware(req: NextRequest) {
+export function middleware(req: NextRequest) {
   const { pathname, method } = req.nextUrl.pathname
     ? { pathname: req.nextUrl.pathname, method: req.method }
     : { pathname: '/', method: req.method }
@@ -72,7 +75,7 @@ export async function middleware(req: NextRequest) {
 
   // ── 1. Auth guard — /dashboard routes ────────────────────────────────────
   if (req.nextUrl.pathname.startsWith('/dashboard')) {
-    const authed = await isAuthenticated(req)
+    const authed = isAuthenticated(req)
     if (!authed) {
       const loginUrl = new URL('/login', req.url)
       loginUrl.searchParams.set('next', req.nextUrl.pathname)

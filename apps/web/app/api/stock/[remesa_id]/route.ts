@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withAuth, withRole, type AuthUser } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
-type Params = { remesa_id: string }
+type Params = { params: Promise<{ remesa_id: string }> }
 
-export async function GET(
+export const GET = withAuth(async (
   _req: NextRequest,
-  { params }: { params: Promise<Params> }
-) {
-  const { remesa_id } = await params
+  _user: AuthUser,
+  ctx: Params
+) => {
+  const { remesa_id } = await ctx.params
 
   const { data, error } = await supabase
     .from('stock_recepciones')
@@ -17,7 +19,7 @@ export async function GET(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ recepciones: data })
-}
+})
 
 interface StockItemInput {
   sku: string
@@ -32,11 +34,12 @@ interface StockPostBody {
   items?: StockItemInput[]
 }
 
-export async function POST(
+export const POST = withRole(['warehouse', 'owner', 'finance'], async (
   req: NextRequest,
-  { params }: { params: Promise<Params> }
-) {
-  const { remesa_id } = await params
+  _user: AuthUser,
+  ctx: Params
+) => {
+  const { remesa_id } = await ctx.params
 
   let body: StockPostBody
   try {
@@ -45,7 +48,6 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  // Create reception record
   const { data: recepcion, error: recError } = await supabase
     .from('stock_recepciones')
     .insert({
@@ -58,7 +60,6 @@ export async function POST(
 
   if (recError) return NextResponse.json({ error: recError.message }, { status: 400 })
 
-  // Insert items
   if (body.items && body.items.length > 0) {
     const items = body.items.map((item) => ({
       ...item,
@@ -69,7 +70,6 @@ export async function POST(
     if (itemsError) return NextResponse.json({ error: itemsError.message }, { status: 400 })
   }
 
-  // Check for differences (regla: no bloquear — notificar Sebastian en paralelo)
   const hasDifferences = body.items?.some(
     (item) => item.cantidad_recibida !== item.cantidad_invoice
   ) ?? false
@@ -78,9 +78,9 @@ export async function POST(
     await Promise.all([
       supabase.from('alertas').insert({
         remesa_id,
-        tipo:        'DIFERENCIA_STOCK',
-        mensaje:     `Diferencias de stock en recepción del ${body.fecha_recepcion ?? 'hoy'}. Revisar con proveedor.`,
-        urgente:     false,
+        tipo:         'DIFERENCIA_STOCK',
+        mensaje:      `Diferencias de stock en recepción del ${body.fecha_recepcion ?? 'hoy'}. Revisar con proveedor.`,
+        urgente:      false,
         destinatario: 'sebastian',
       }),
       supabase.from('stock_recepciones')
@@ -89,7 +89,6 @@ export async function POST(
     ])
   }
 
-  // Update remesa estado
   await supabase.from('remesas')
     .update({ estado: 'MERCADERIA_RECIBIDA' })
     .eq('id', remesa_id)
@@ -104,4 +103,4 @@ export async function POST(
   })
 
   return NextResponse.json({ recepcion }, { status: 201 })
-}
+})
