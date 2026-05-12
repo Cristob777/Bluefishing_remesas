@@ -62,7 +62,7 @@ function LoginForm() {
             fontSize: 22,
           }}>🎣</div>
           <h1 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-            Bluefishing Agents
+            Import Workflow Agents
           </h1>
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
             Ingresa con tu cuenta

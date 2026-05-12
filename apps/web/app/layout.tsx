@@ -17,8 +17,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Bluefishing Agents',
-  description: 'Sistema de gestión de remesas — Bluefishing.cl',
+  title: 'Import Workflow Agents',
+  description: 'AI-powered import operations — invoice intake, customs funds, landed cost, reconciliation.',
   icons: { icon: '/favicon.svg' },
 }
 

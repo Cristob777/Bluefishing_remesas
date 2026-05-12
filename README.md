@@ -1,157 +1,136 @@
-# Bluefishing AI Agents
+# Import Workflow Agents
 
-> Autonomous financial operations for international fishing-gear imports.
-> Built for **MI TIENDA SPA / BLUEFISHING.CL** — Santiago, Chile.
+> An autonomous AI agent system that handles the full import operations cycle — from supplier invoices to landed cost per SKU — with zero manual data entry.
 
+[![Stack](https://img.shields.io/badge/stack-Next.js%2015%20%C2%B7%20Claude%20Opus%20%C2%B7%20Supabase-blue)]()
 [![Status](https://img.shields.io/badge/status-production-success)]()
-[![Stack](https://img.shields.io/badge/stack-Next.js%2015%20%C2%B7%20Claude%20%C2%B7%20Supabase-blue)]()
 [![Cost](https://img.shields.io/badge/runtime%20cost-~$7%20USD%2Fmonth-green)]()
-<img width="1919" height="830" alt="image" src="https://github.com/user-attachments/assets/f15e4994-c48a-4d7f-9e8d-01dc81d328ca" />
 
+<img width="1919" height="830" alt="image" src="https://github.com/user-attachments/assets/f15e4994-c48a-4d7f-9e8d-01dc81d328ca" />
 <img width="1919" height="832" alt="image" src="https://github.com/user-attachments/assets/039701b3-cfdb-4425-b730-5a4e0fa8451c" />
 <img width="1919" height="826" alt="image" src="https://github.com/user-attachments/assets/d4c026b6-4ba8-45c4-8022-94c399fa4ce9" />
 <img width="1919" height="828" alt="image" src="https://github.com/user-attachments/assets/d6a48d95-976f-431b-97f8-d99e367f1812" />
-<img width="1918" height="826" alt="image" src="https://github.com/user-attachments/assets/e029cb28-7bcd-47a9-88c4-bd644f1e5a78" />
-
 
 ---
 
-
 ## The problem
 
-Every imported shipment from Asia triggers a 5-stage chain of emails, bank transfers, customs clearances and cost reconciliations. Until now, this happened manually:
+Every import shipment from Asia triggers a 5-stage chain of emails, bank transfers, customs clearances, and cost reconciliations. For most SMBs this happens manually:
 
-- **8+ hours per month** of the owner copying invoices into Excel
-- **Manual FX calculations** with risk of errors on every transfer
-- **Customs deadlines lost** in inbox noise (mercadería at risk of retention)
-- **Real landed cost per SKU** unknown until weeks after the shipment arrived
-- **Zero audit trail** for SII (Chilean tax authority) compliance
+- **8+ hours/month** copying invoices into Excel and calculating FX manually
+- **Customs deadlines missed** because urgent emails get buried in the inbox
+- **Real landed cost per SKU unknown** until weeks after the shipment arrives
+- **Zero audit trail** for tax compliance
+- **FX errors** on every bank transfer when rates aren't applied on the payment date
 
 ---
 
 ## The solution
 
-Four specialised AI agents monitor the same emails the owner reads, extract structured data from PDFs and Excels in any language, calculate official FX rates from the CMF Chile API, and update a real-time operations database. Humans only intervene where it matters: approving transfers and making commercial decisions.
+Four specialised AI agents monitor the same inbox the owner reads, extract structured data from supplier emails and customs documents, calculate official FX rates, and update a real-time operations database — automatically.
+
+Humans only intervene where it matters: approving transfers and making commercial decisions.
 
 ```
-Supplier email (AMIGOS · MEIHO · VARIVAS)
+Supplier email (any country, any currency)
             │
             ▼
    ┌─────────────────────┐
-   │  Next.js Webhook    │ ◄── Gmail Pub/Sub
-   │  /api/webhook/email │
+   │  Gmail API + Cron   │  polls UNREAD → classifies with Claude Haiku
+   │  /api/cron/poll     │
    └─────────┬───────────┘
              │
+             ▼  classified as one of:
+             │  INVOICE_PROVEEDOR · PROVISION_FONDOS
+             │  DIN_DESPACHO · NOTA_DEBITO_AGENSA
              ▼
    ┌──────────────────────────────────────────┐
-   │        CLAUDE MANAGED AGENTS             │
+   │           AI AGENT PIPELINE              │
    │                                          │
-   │  Invoice Intake      → invoices in       │
-   │  Customs Funds       → AGENSA urgency    │
-   │  Landed Cost         → real cost per SKU │
-   │  DIN Reconciliation  → close the file    │
+   │  invoice_intake    → extracts invoice    │
+   │  customs_funds     → flags urgent dates  │
+   │  din_reconciliation→ matches provision   │
+   │  nota_debito       → handles refunds     │
+   │  landed_cost       → cost per SKU        │
    └─────────┬────────────────────────────────┘
              │
              ▼
    ┌──────────────────────────────────────────┐
    │  Supabase (Postgres + Realtime)          │
-   │  remesas · pagos · provisiones · stock   │
-   │  documentos · alertas · agent_logs · fx  │
+   │  shipments · payments · customs          │
+   │  stock · documents · alerts · fx_rates   │
    └──────────────────────────────────────────┘
 ```
 
 ---
 
-## Operations flow
+## Operations workflow (5 stages)
 
-| Stage | Trigger | Agent | Human action |
-|------:|---------|-------|--------------|
-| **I** | Supplier invoice | `invoice_intake` extracts amount, currency, payment terms | Sebastián confirms |
-| **II** | Sebastián instructs Hector | — | Hector emits bank order (30/70, 50/50, 100%) |
-| **III** | AGENSA funds request | `customs_funds` flags ≤ 3-day deadlines in real time | Hector pays provision |
-| **IV** | Goods arrive at warehouse | — | Anyone counts; system enters real qty into Bsale |
-| **V** | DIN + customs invoices | `din_reconciliation` matches provision vs real cost | Sebastián approves close |
+| Stage | Email trigger | Agent | Human action |
+|------:|--------------|-------|--------------|
+| **I** | Supplier invoice arrives | `invoice_intake` extracts amount, currency, payment terms | Owner confirms |
+| **II** | Owner instructs finance team | — | Finance emits bank transfer (30/70, 50/50, 100%) |
+| **III** | Customs agency requests funds | `customs_funds` flags ≤ 3-day deadlines, alerts if urgent | Finance pays provision |
+| **IV** | Goods arrive at warehouse | — | Team counts; system records real qty |
+| **V** | DIN + customs invoice arrives | `din_reconciliation` matches provision vs real cost → triggers `landed_cost` | Owner approves close |
+| **V+** | Customs agency refund notice | `nota_debito` records credit, creates alert | Finance coordinates return |
 
-A discrepancy in Stage IV automatically prepares a supplier claim draft — the owner reviews and sends.
+Stock discrepancies in Stage IV automatically flag a supplier claim — no chasing needed.
 
 ---
 
 ## Tech stack
 
 | Layer | Choice | Why |
-|------|--------|-----|
-| AI agents | Custom agentic loop — Anthropic SDK (Opus 4.7) | Full control over tool execution and retry logic |
-| Database | Supabase (Postgres + Realtime) | RLS, instant subscriptions, free tier |
-| Frontend & API | Next.js 15 App Router | Server components + edge functions |
-| Hosting | Vercel | Push-to-deploy, global edge |
-| FX rates | CMF Chile API | Official source, no third-party risk |
-| Inventory | Bsale REST API | The ERP already in use |
-| Knowledge base | Obsidian → Supabase sync | Business rules as RAG context |
-| Dev environment | Antigravity + Claude Code | Multi-agent IDE workflow |
+|-------|--------|-----|
+| AI agents | Anthropic SDK — Claude Opus 4.7 | Full control over tool execution and agentic loop |
+| Email classifier | Claude Haiku | Fast, cheap, ~$0.001/email |
+| Database | Supabase (Postgres + Realtime + RLS) | Row-level security, instant subscriptions |
+| Frontend | Next.js 15 App Router | Server components + API routes |
+| Email ingestion | Gmail API (OAuth2) | Reliable from serverless; IMAP blocked by Gmail on cloud IPs |
+| Hosting | Vercel | Edge functions, daily cron |
+| FX rates | CMF Chile API | Official government source |
+| Dev tool | Claude Code | Entire system built agent-to-agent |
 
 ---
 
-## Knowledge base (RAG)
+## Security
 
-Business rules live as Markdown notes in a local Obsidian vault — supplier terms, payment conditions, commercial agreements, customs codes. A lightweight Node sync pushes them into Supabase, where agents query them before deciding anything non-trivial.
-
-```
-Obsidian vault (local)
-        │
-        ▼  obsidian-sync (Node.js)
-        ▼
-Supabase: obsidian_knowledge table
-        │
-        ▼  tool call inside agent runtime
-        ▼
-Agent decisions grounded in real business rules
-```
-
-This means non-technical staff can update the AI's behaviour by editing a note, not by writing code.
-
----
-
-## Security & compliance
-
-- **Row-Level Security** enabled on every table
-- **Service role isolation** — webhooks only, no public writes
-- **5-layer webhook protection**: rate limiting → timing-safe auth → payload size limits → structural validation → input sanitization
-- **Approvals over CLP $5M** require explicit human sign-off
-- **Immutable audit trail** in `agent_logs` — every agent decision logged with reasoning, input, output, latency
-- **SQL execution sandbox** blocks DDL, DELETE/UPDATE without WHERE, file access functions
-- **HSTS · CSP · X-Frame-Options DENY** on every response
+- **Row-Level Security** on every table — service role only for agents
+- **Timing-safe webhook auth** + sender domain whitelist
+- **SQL sandbox** blocks DDL, DELETE/UPDATE without WHERE
+- **Human-in-the-loop** for operations above configurable CLP threshold
+- **Immutable audit trail** — every agent decision logged with input, output, reasoning
+- **CSP + HSTS + X-Frame-Options** on every response
+- **No hardcoded secrets** — all operational data in environment variables
 
 ---
 
 ## Production cost
 
 ```
-Vercel        Hosting · webhooks · cron        free tier
-Supabase      DB · auth · realtime · storage   free tier (≤ 500 MB)
-Anthropic     4 Claude agents · ~15 ops/mo     ~$7 USD / month
-──────────────────────────────────────────────────────────
-Total runtime                                  ~$7 USD / month
+Vercel      Hosting · webhooks · daily cron     free tier
+Supabase    DB · auth · realtime · storage       free tier (≤ 500 MB)
+Anthropic   5 agents · ~15 operations/month     ~$7 USD / month
+────────────────────────────────────────────────────────────
+Total                                            ~$7 USD / month
 ```
-
-For development, a single Claude Pro plan ($20/month) is sufficient.
 
 ---
 
 ## Project structure
 
 ```
-bluefishing-agents/
-├── agents/                    # YAML definitions for 4 Claude agents
-├── supabase/migrations/       # Schema + RLS + security hardening
+import-workflow-agents/
+├── agents/                    # YAML specs for 5 Claude agents
+├── supabase/migrations/       # Schema · RLS · security hardening · indexes
 ├── apps/
-│   ├── web/                   # Next.js 15 dashboard
-│   │   ├── app/dashboard/     # Overview · Remesas · Stock · Acciones · Agentes
-│   │   ├── app/api/           # Webhooks · Actions · Cron
-│   │   ├── lib/agents/        # Runner + tools (FX, Supabase RPC)
-│   │   └── components/        # UI primitives + design system
-│   └── obsidian-sync/         # Node service: vault → Supabase
-├── CLAUDE.md                  # Project context for Claude Code
-└── SETUP.md                   # Step-by-step deployment guide
+│   └── web/                   # Next.js 15 dashboard
+│       ├── app/dashboard/     # Overview · Shipments · Stock · Actions · Agents
+│       ├── app/api/           # Webhook · Actions · Cron · Gmail OAuth
+│       ├── lib/agents/        # Agentic loop runner + all agent implementations
+│       └── components/        # Design system v3
+└── SETUP.md                   # Step-by-step deploy guide
 ```
 
 ---
@@ -160,43 +139,52 @@ bluefishing-agents/
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/your-org/bluefishing-agents
-cd bluefishing-agents/apps/web && npm install
+git clone https://github.com/Cristob777/Bluefishing_remesas
+cd apps/web && npm install
 
 # 2. Configure environment
 cp .env.example .env.local
-# Fill in: ANTHROPIC_API_KEY, SUPABASE_*, WEBHOOK_SECRET, CMF_API_KEY
+# Fill: ANTHROPIC_API_KEY · SUPABASE_* · WEBHOOK_SECRET
+#       OWNER_EMAILS · FINANCE_EMAILS · SUPPLIER_NAMES
+#       GOOGLE_CLIENT_ID · GOOGLE_CLIENT_SECRET
 
-# 3. Run database migrations
-npx supabase db push
+# 3. Apply database migrations
+# Run supabase/migrations/*.sql in your Supabase SQL Editor
 
-# 4. Start development server
+# 4. Start dev server
 npm run dev
+
+# 5. Connect Gmail accounts
+# Visit /api/gmail-auth?account=owner → authorize → copy refresh token → add to env
 ```
 
-Full setup including Gmail OAuth, Vercel deploy, and Managed Agents configuration is documented in [`SETUP.md`](./SETUP.md).
+Full setup including Gmail OAuth flow and Vercel deploy: [`SETUP.md`](./SETUP.md)
 
 ---
 
-## Roadmap
+## What makes this different
 
-- [x] 4 agents in production with realtime DB
-- [x] Human-in-the-loop action centre (9 flows)
-- [x] Stock receiving with automatic claim drafts
-- [x] Obsidian → Supabase RAG sync
-- [x] Gmail OAuth for both monitored accounts
-- [x] Bsale automatic cost-price sync
-- [x] Mobile-optimised counting interface for warehouse staff
-- [x] WhatsApp alerts for urgent provisions
+Most automation tools (Zapier, Make, n8n) connect existing apps. This system **understands** unstructured emails in any language, extracts structured financial data, applies domain-specific business rules (FX on payment date, not invoice date), and chains agents together automatically.
+
+The entire codebase was built using Claude Code — agent-to-agent development from architecture to production in a single laptop session.
+
+---
+
+## Adapt to your business
+
+All operational data is in environment variables — no hardcoded company names, emails, or bank details. To adapt:
+
+1. Set `OWNER_EMAILS`, `FINANCE_EMAILS`, `SUPPLIER_NAMES` in Vercel
+2. Set `CUSTOMS_AGENCY_EMAIL`, `CUSTOMS_AGENCY_NAME`
+3. Connect your Gmail accounts via the OAuth flow
+4. Done — agents start classifying your emails immediately
 
 ---
 
 ## License
 
-Private project — all rights reserved.
-For commercial enquiries: **cristobal.caceres@mayor.cl**
+MIT — free to use, adapt, and deploy.
 
 ---
 
-<sub>Built with Claude Opus 4.7 · Designed in Antigravity · Deployed from a single laptop.</sub>
-*Built with Claude AI · Supabase · Next.js · Vercel*
+<sub>Built with Claude Opus 4.7 · Claude Code · Deployed from a laptop · ~$7/month in production.</sub>
