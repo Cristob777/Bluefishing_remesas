@@ -94,22 +94,57 @@ function extractBody(payload: {
   return ''
 }
 
+// Account label — kept as union for type safety in downstream agents.
+// 'ops' is the recommended slot for the Ops Inbox pattern (one shared inbox per company).
+type AccountLabel = 'sebastian' | 'hector' | 'ops' | string
+
 interface AccountConfig {
-  label:        'sebastian' | 'hector'
+  label:        AccountLabel
   refreshToken: string
+  email?:       string  // optional, for logging/display only
 }
+
+// ── Ops Inbox pattern ─────────────────────────────────────────────────────────
+// One monitored inbox per company. All operational stakeholders forward/CC emails
+// there via Gmail filter rules. No need to connect individual accounts.
+//
+// Set up to 8 accounts via env vars:
+//   GMAIL_REFRESH_TOKEN_OPS      → the shared ops inbox (recommended for new deployments)
+//   GMAIL_EMAIL_OPS              → email address of the ops inbox (optional, for logging)
+//   GMAIL_REFRESH_TOKEN_ACCOUNT_1..8 → legacy or multi-account setups
+//   GMAIL_EMAIL_ACCOUNT_1..8     → email addresses (optional)
+//
+// Legacy slots (backwards compat):
+//   GMAIL_REFRESH_TOKEN_SEBASTIAN / HECTOR / CRISTOBAL
 
 function getAccounts(): AccountConfig[] {
   const accounts: AccountConfig[] = []
-  if (process.env.GMAIL_REFRESH_TOKEN_CRISTOBAL) {
-    accounts.push({ label: 'sebastian', refreshToken: process.env.GMAIL_REFRESH_TOKEN_CRISTOBAL })
+  const seen = new Set<string>()
+
+  function add(token: string | undefined, label: AccountLabel, email?: string) {
+    if (token && !seen.has(token)) {
+      seen.add(token)
+      accounts.push({ label, refreshToken: token, email })
+    }
   }
-  if (process.env.GMAIL_REFRESH_TOKEN_SEBASTIAN) {
-    accounts.push({ label: 'sebastian', refreshToken: process.env.GMAIL_REFRESH_TOKEN_SEBASTIAN })
+
+  // Ops Inbox (primary slot for new deployments)
+  add(process.env.GMAIL_REFRESH_TOKEN_OPS, 'ops', process.env.GMAIL_EMAIL_OPS)
+
+  // Numbered slots (ACCOUNT_1 through ACCOUNT_8) for multi-account setups
+  for (let i = 1; i <= 8; i++) {
+    add(
+      process.env[`GMAIL_REFRESH_TOKEN_ACCOUNT_${i}`],
+      process.env[`GMAIL_LABEL_ACCOUNT_${i}`] ?? `account_${i}`,
+      process.env[`GMAIL_EMAIL_ACCOUNT_${i}`],
+    )
   }
-  if (process.env.GMAIL_REFRESH_TOKEN_HECTOR) {
-    accounts.push({ label: 'hector', refreshToken: process.env.GMAIL_REFRESH_TOKEN_HECTOR })
-  }
+
+  // Legacy named slots (backwards compat for existing deployments)
+  add(process.env.GMAIL_REFRESH_TOKEN_SEBASTIAN, 'sebastian', 'sebastian')
+  add(process.env.GMAIL_REFRESH_TOKEN_HECTOR,   'hector',    'hector')
+  add(process.env.GMAIL_REFRESH_TOKEN_CRISTOBAL, 'ops',       'cristobal')
+
   return accounts
 }
 
