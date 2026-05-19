@@ -39,28 +39,48 @@ function buildSecurityHeaders(nonce: string) {
 // Full token validation happens server-side in API routes via Supabase RLS.
 // Here we just check the cookie exists and the access_token isn't expired.
 
-function isAuthenticated(req: NextRequest): boolean {
-  const cookies    = req.headers.get('cookie') ?? ''
-  // Supabase stores session as: sb-<project>-auth-token or sb-<project>-auth-token.0
-  const tokenMatch = cookies.match(/sb-[^=]+-auth-token(?:\.\d+)?=([^;]+)/)
-  if (!tokenMatch) return false
-
+function jwtNotExpired(token: string): boolean {
   try {
-    const raw    = decodeURIComponent(tokenMatch[1])
-    const parsed = JSON.parse(raw)
-    const session = Array.isArray(parsed) ? parsed[0] : parsed
-    const token   = session?.access_token
-    if (!token) return false
-
-    // Decode JWT payload (no signature verification needed — just expiry check)
     const payloadB64 = token.split('.')[1]
     if (!payloadB64) return false
     const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString())
-    // exp is Unix seconds
     return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now()
   } catch {
     return false
   }
+}
+
+function isAuthenticated(req: NextRequest): boolean {
+  const cookieHeader = req.headers.get('cookie') ?? ''
+
+  // @supabase/ssr sets: sb-<project>-auth-token (JSON with access_token)
+  // Also check sb-<project>-auth-token.0 (chunked) and legacy formats
+  const authTokenMatch = cookieHeader.match(/sb-[^=]+-auth-token(?:\.\d+)?=([^;]+)/)
+  if (authTokenMatch) {
+    try {
+      const raw     = decodeURIComponent(authTokenMatch[1])
+      const parsed  = JSON.parse(raw)
+      const session = Array.isArray(parsed) ? parsed[0] : parsed
+      const token   = session?.access_token
+      if (token && jwtNotExpired(token)) return true
+    } catch { /* continue */ }
+  }
+
+  // @supabase/ssr v0.5+ stores access token directly in sb-<proj>-auth-token.0
+  // as a plain JSON string: {"access_token":"eyJ...", ...}
+  const chunks = cookieHeader.match(/sb-[^=]+-auth-token\.\d+=([^;]+)/g)
+  if (chunks) {
+    try {
+      const combined = chunks
+        .map(c => decodeURIComponent(c.split('=').slice(1).join('=')))
+        .join('')
+      const session = JSON.parse(combined)
+      const token   = session?.access_token
+      if (token && jwtNotExpired(token)) return true
+    } catch { /* continue */ }
+  }
+
+  return false
 }
 
 // ── Main middleware ───────────────────────────────────────────────────────────
