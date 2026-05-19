@@ -1,15 +1,8 @@
 import { google } from 'googleapis'
-import { createClient } from '@supabase/supabase-js'
 import type { ExtractedEmail } from './imap-extractor'
+import { db } from '@/lib/supabase'
 
 export type { ExtractedEmail }
-
-function sb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 function getBaseUrl(): string {
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL
@@ -36,7 +29,7 @@ export function getAuthUrl(state: string): string {
 }
 
 async function isAlreadyProcessed(messageId: string): Promise<boolean> {
-  const { data } = await sb()
+  const { data } = await db
     .from('agent_logs')
     .select('id')
     .eq('accion', 'IMAP_EMAIL_PROCESSED')
@@ -46,7 +39,7 @@ async function isAlreadyProcessed(messageId: string): Promise<boolean> {
 }
 
 async function markProcessed(messageId: string, account: string, subject: string): Promise<void> {
-  await sb().from('agent_logs').insert({
+  await db.from('agent_logs').insert({
     agent_name: 'imap_poller',
     accion:     'IMAP_EMAIL_PROCESSED',
     payload:    { message_id: messageId, account, subject },
@@ -253,7 +246,7 @@ export async function pollAllGmailAccounts(): Promise<{ processed: number; error
       const msg = `Gmail error [${account.label}]: ${e instanceof Error ? e.message : String(e)}`
       errors.push(msg)
 
-      await sb().from('agent_logs').insert({
+      await db.from('agent_logs').insert({
         agent_name:    'imap_poller',
         accion:        'GMAIL_API_ERROR',
         payload:       { account: account.label },

@@ -1,5 +1,5 @@
 import { ImapFlow } from 'imapflow'
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/supabase'
 
 export interface ExtractedEmail {
   messageId:   string
@@ -43,15 +43,8 @@ function getAccounts(): ImapAccount[] {
   return accounts
 }
 
-function sb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
-
 async function isAlreadyProcessed(messageId: string): Promise<boolean> {
-  const { data } = await sb()
+  const { data } = await db
     .from('agent_logs')
     .select('id')
     .eq('accion', 'IMAP_EMAIL_PROCESSED')
@@ -61,7 +54,7 @@ async function isAlreadyProcessed(messageId: string): Promise<boolean> {
 }
 
 async function markProcessed(messageId: string, account: string, subject: string): Promise<void> {
-  await sb().from('agent_logs').insert({
+  await db.from('agent_logs').insert({
     agent_name: 'imap_poller',
     accion:     'IMAP_EMAIL_PROCESSED',
     payload:    { message_id: messageId, account, subject },
@@ -194,7 +187,7 @@ export async function pollAllAccounts(): Promise<{ processed: number; errors: st
       const msg = `IMAP error [${account.label}]: ${e instanceof Error ? e.message : String(e)}`
       errors.push(msg)
 
-      await sb().from('agent_logs').insert({
+      await db.from('agent_logs').insert({
         agent_name:    'imap_poller',
         accion:        'IMAP_CONNECTION_ERROR',
         payload:       { account: account.label, host: account.host },

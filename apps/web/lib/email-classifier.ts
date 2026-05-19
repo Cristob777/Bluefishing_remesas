@@ -1,14 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { EmailCategory, WebhookEmailPayload, ClassifiedEmail } from '@/types'
+import { ai, MODELS } from '@/lib/ai'
+import { config } from '@/lib/config'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-
-const supplierNames  = (process.env.SUPPLIER_NAMES       ?? 'proveedores conocidos').split(',').map(s => s.trim()).join(', ')
-const customsAgency  = process.env.CUSTOMS_AGENCY_NAME   ?? 'agencia de aduana'
-const ownerName      = process.env.OWNER_NAME            ?? 'el propietario'
-const financeName    = process.env.FINANCE_NAME          ?? 'el gerente financiero'
-
-const SYSTEM = `Eres un clasificador de emails para una empresa importadora de productos de pesca deportiva en Chile.
+function buildSystem() {
+  const { supplierNames, customsAgency, ownerName, financeName } = config.classifier
+  return `Eres un clasificador de emails para una empresa importadora de productos de pesca deportiva en Chile.
 Clasifica el email en UNA de estas categorías:
 
 - INVOICE_PROVEEDOR    → factura/proforma de proveedor (${supplierNames})
@@ -27,6 +23,7 @@ Responde SOLO con JSON válido (sin markdown):
   "extracted_data": {},
   "reasoning": "una línea"
 }`
+}
 
 export async function classifyEmail(
   payload: WebhookEmailPayload
@@ -44,10 +41,10 @@ export async function classifyEmail(
     .trim()
 
   try {
-    const msg = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const msg = await ai.messages.create({
+      model: MODELS.classifier,
       max_tokens: 512,
-      system: SYSTEM,
+      system: buildSystem(),
       messages: [{ role: 'user', content: userContent }],
     })
 

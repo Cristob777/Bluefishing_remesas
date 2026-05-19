@@ -2,34 +2,8 @@ import { timingSafeEqual as cryptoTimingSafeEqual } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import type { WebhookEmailPayload } from '@/types'
 
-// ── Rate limiting (in-memory, resets on cold start) ───────────────────────────
-// For persistent limits at scale, swap to Upstash Redis.
-
-interface RateWindow {
-  count: number
-  resetAt: number
-}
-
-const rateLimitStore = new Map<string, RateWindow>()
-const RATE_LIMIT_MAX    = 20
-const RATE_LIMIT_WINDOW = 60_000
-
-export function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
-  const now      = Date.now()
-  const existing = rateLimitStore.get(ip)
-
-  if (!existing || now > existing.resetAt) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW })
-    return { allowed: true }
-  }
-
-  if (existing.count >= RATE_LIMIT_MAX) {
-    return { allowed: false, retryAfter: Math.ceil((existing.resetAt - now) / 1000) }
-  }
-
-  existing.count++
-  return { allowed: true }
-}
+// Rate limiting re-exported from lib/rate-limit.ts (swappable backend)
+export { checkRateLimit } from '@/lib/rate-limit'
 
 // x-real-ip set by Vercel edge — more trustworthy than x-forwarded-for
 export function getClientIp(req: NextRequest): string {
