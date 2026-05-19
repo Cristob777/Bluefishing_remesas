@@ -21,7 +21,7 @@ function buildSecurityHeaders(nonce: string) {
     'X-DNS-Prefetch-Control':    'off',
     'Content-Security-Policy': [
       "default-src 'self'",
-      `script-src 'self' 'nonce-${nonce}'`,
+      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' https://fonts.gstatic.com",
@@ -66,10 +66,6 @@ function isAuthenticated(req: NextRequest): boolean {
 // ── Main middleware ───────────────────────────────────────────────────────────
 
 export function middleware(req: NextRequest) {
-  const { pathname, method } = req.nextUrl.pathname
-    ? { pathname: req.nextUrl.pathname, method: req.method }
-    : { pathname: '/', method: req.method }
-
   const nonce     = Buffer.from(crypto.randomUUID()).toString('base64')
   const requestId = crypto.randomUUID()
 
