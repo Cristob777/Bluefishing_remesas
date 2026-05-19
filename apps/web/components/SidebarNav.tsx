@@ -20,10 +20,10 @@ const AGENT_COLORS = ['#4F46E5', '#059669', '#D97706', '#7C3AED']
 
 const NAV = [
   { href: '/dashboard/overview', label: 'Overview',  Icon: LayoutDashboard },
-  { href: '/dashboard/remesas',  label: 'Remesas',   Icon: ArrowLeftRight },
+  { href: '/dashboard/remesas',  label: 'Shipments',  Icon: ArrowLeftRight },
   { href: '/dashboard/stock',    label: 'Stock',      Icon: Package },
-  { href: '/dashboard/actions',  label: 'Acciones',   Icon: Zap, badgeKey: 'actions' },
-  { href: '/dashboard/agents',   label: 'Agentes',    Icon: Bot },
+  { href: '/dashboard/actions',  label: 'Actions',    Icon: Zap, badgeKey: 'actions' },
+  { href: '/dashboard/agents',   label: 'Agents',     Icon: Bot },
 ]
 
 export function SidebarNav() {
@@ -65,7 +65,7 @@ export function SidebarNav() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-2 overflow-y-auto">
-        <p className="nav-section-label">Menú</p>
+        <p className="nav-section-label">Menu</p>
         <div className="space-y-0.5">
           {NAV.map(({ href, label, Icon, badgeKey }) => {
             const isActive = pathname?.startsWith(href)
@@ -92,7 +92,7 @@ export function SidebarNav() {
         </div>
 
         {/* Agent heartbeat section */}
-        <p className="nav-section-label mt-2">Sistema</p>
+        <p className="nav-section-label mt-2">System</p>
         <div
           className="rounded-lg px-3 py-2.5 space-y-2"
           style={{ background: '#FAFAF9', border: '1px solid #E7E5E4' }}
@@ -122,7 +122,7 @@ export function SidebarNav() {
         }}
       >
         <Command size={12} />
-        <span className="text-[11px] flex-1 text-left">Búsqueda rápida</span>
+        <span className="text-[11px] flex-1 text-left">Quick search</span>
         <kbd className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#E7E5E4', color: '#A3A3A3' }}>⌘K</kbd>
       </button>
 

@@ -83,14 +83,14 @@ export default function RemesaDetail({ remesa }: Props) {
         {tab === 'invoice' && (
           <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm sm:grid-cols-3">
             {[
-              { label: 'Monto original', value: formatCurrency(remesa.monto_original, remesa.moneda_origen) },
-              { label: 'Moneda', value: remesa.moneda_origen },
-              { label: 'Condición pago', value: remesa.condicion_pago ?? '—' },
-              { label: 'Fecha invoice', value: remesa.fecha_invoice ? formatDate(remesa.fecha_invoice) : '—' },
-              { label: 'N° despacho', value: remesa.numero_despacho ?? '—' },
+              { label: 'Original amount', value: formatCurrency(remesa.monto_original, remesa.moneda_origen) },
+              { label: 'Currency', value: remesa.moneda_origen },
+              { label: 'Payment condition', value: remesa.condicion_pago ?? '—' },
+              { label: 'Invoice date', value: remesa.fecha_invoice ? formatDate(remesa.fecha_invoice) : '—' },
+              { label: 'Dispatch no.', value: remesa.numero_despacho ?? '—' },
               { label: 'DIN', value: remesa.din_numero ?? '—' },
-              { label: 'Creado', value: formatDate(remesa.created_at) },
-              { label: 'Actualizado', value: formatDate(remesa.updated_at) },
+              { label: 'Created', value: formatDate(remesa.created_at) },
+              { label: 'Updated', value: formatDate(remesa.updated_at) },
             ].map(({ label, value }) => (
               <div key={label}>
                 <dt style={{ color: '#9CA3AF' }}>{label}</dt>

@@ -31,10 +31,10 @@ interface Remesa {
 
 const ESTADO_LABELS: Record<string, string> = {
   INVOICE_RECIBIDO:    'Invoice',
-  PAGO_PENDIENTE:      'Pago Pendiente',
-  PAGO_PARCIAL:        'Pago Parcial',
-  PAGO_COMPLETO:       'Pago Completo',
-  EN_ADUANA:           'En Aduana',
+  PAGO_PENDIENTE:      'Payment Pending',
+  PAGO_PARCIAL:        'Partial Payment',
+  PAGO_COMPLETO:       'Payment Complete',
+  EN_ADUANA:           'In Customs',
   PROVISION_RECIBIDA:  'Provisión',
   MERCADERIA_RECIBIDA: 'Mercadería',
   RECONCILIADO:        'Reconciliado',
@@ -54,11 +54,11 @@ const ESTADO_BADGE: Record<string, 'neutral' | 'pending' | 'warning' | 'success'
 const PIPELINE = ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL','PAGO_COMPLETO','EN_ADUANA','PROVISION_RECIBIDA','MERCADERIA_RECIBIDA','RECONCILIADO']
 
 const FILTER_GROUPS = [
-  { label: 'Todas',       estados: null },
-  { label: 'Por pagar',   estados: ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL'] },
-  { label: 'En tránsito', estados: ['PAGO_COMPLETO','EN_ADUANA'] },
-  { label: 'En proceso',  estados: ['PROVISION_RECIBIDA','MERCADERIA_RECIBIDA'] },
-  { label: 'Cerradas',    estados: ['RECONCILIADO'] },
+  { label: 'All',       estados: null },
+  { label: 'To pay',   estados: ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL'] },
+  { label: 'In transit', estados: ['PAGO_COMPLETO','EN_ADUANA'] },
+  { label: 'In process',  estados: ['PROVISION_RECIBIDA','MERCADERIA_RECIBIDA'] },
+  { label: 'Closed',    estados: ['RECONCILIADO'] },
 ]
 
 const FLAG: Record<string, string> = { China: '🇨🇳', Japón: '🇯🇵', Japan: '🇯🇵' }
@@ -86,12 +86,12 @@ function PipelineBar({ estado }: { estado: string }) {
 // ── Side panel ────────────────────────────────────────────────────────────────
 
 const PIPELINE_STEPS = [
-  { key: 'INVOICE_RECIBIDO',    label: 'Invoice recibido' },
-  { key: 'PAGO_PENDIENTE',      label: 'Instrucción de pago' },
-  { key: 'PAGO_COMPLETO',       label: 'Pagos confirmados' },
-  { key: 'EN_ADUANA',           label: 'En aduana' },
-  { key: 'PROVISION_RECIBIDA',  label: 'Provisión AGENSA' },
-  { key: 'MERCADERIA_RECIBIDA', label: 'Mercadería recibida' },
+  { key: 'INVOICE_RECIBIDO',    label: 'Invoice received' },
+  { key: 'PAGO_PENDIENTE',      label: 'Payment instruction' },
+  { key: 'PAGO_COMPLETO',       label: 'Payments confirmed' },
+  { key: 'EN_ADUANA',           label: 'In customs' },
+  { key: 'PROVISION_RECIBIDA',  label: 'AGENSA provision' },
+  { key: 'MERCADERIA_RECIBIDA', label: 'Goods received' },
   { key: 'RECONCILIADO',        label: 'Reconciliado' },
 ]
 
@@ -127,8 +127,8 @@ function ReconciliacionMeter({ data }: { data: ReconcData }) {
       </p>
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E7E5E4' }}>
         {[
-          { label: 'Provisión pagada', value: data.provision_pagada_clp },
-          { label: 'Costo real (DIN)',  value: data.costo_real_clp },
+          { label: 'Paid provision', value: data.provision_pagada_clp },
+          { label: 'Actual cost (DIN)',  value: data.costo_real_clp },
         ].map((row, i) => (
           <div key={row.label} className="flex items-center justify-between px-4 py-2.5"
                style={{ borderBottom: i === 0 ? '1px solid #F5F5F4' : 'none', background: '#FAFAF9' }}>
@@ -144,7 +144,7 @@ function ReconciliacionMeter({ data }: { data: ReconcData }) {
               Delta {delta >= 0 ? '+' : ''}{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(delta)}
             </span>
             <span className="text-[10px] mono" style={{ color: '#A3A3A3' }}>
-              {ok ? `${Math.round(pct)}% tolerancia` : 'EXCEDE tolerancia'}
+              {ok ? `${Math.round(pct)}% tolerance` : 'EXCEEDS tolerance'}
             </span>
           </div>
           <div className="h-1.5 rounded-full overflow-hidden" style={{ background: ok ? '#D1FAE5' : '#FECACA' }}>
@@ -257,7 +257,7 @@ function SidePanel({
         {hasUrgent && (
           <div className="flex items-center gap-2 px-6 py-3" style={{ background: '#FEF2F2', borderBottom: '1px solid #FECACA' }}>
             <AlertTriangle size={14} style={{ color: '#DC2626', flexShrink: 0 }} />
-            <p className="text-xs font-medium" style={{ color: '#DC2626' }}>Tiene alertas urgentes pendientes</p>
+            <p className="text-xs font-medium" style={{ color: '#DC2626' }}>Has pending urgent alerts</p>
           </div>
         )}
 
@@ -308,8 +308,8 @@ function SidePanel({
             <div className="grid grid-cols-2 gap-2">
               {[
                 { label: 'Total invoice', value: fmtMonto(remesa.monto_original, remesa.moneda_origen), accent: '#0A0A0A' },
-                { label: 'Condición',     value: remesa.condicion_pago ?? '—',                         accent: '#525252' },
-                { label: 'N° despacho',   value: remesa.numero_despacho ?? '—',                        accent: '#4F46E5' },
+                { label: 'Condition',     value: remesa.condicion_pago ?? '—',                         accent: '#525252' },
+                { label: 'Dispatch no.',   value: remesa.numero_despacho ?? '—',                        accent: '#4F46E5' },
                 { label: 'DIN',           value: remesa.din_numero ?? '—',                             accent: '#7C3AED' },
               ].map(item => (
                 <div key={item.label} className="rounded-lg p-3" style={{ background: '#FAFAF9', border: '1px solid #E7E5E4' }}>
@@ -447,7 +447,7 @@ export default function RemesasPage() {
         </div>
         <button className="btn-primary">
           <Plus size={16} />
-          Nueva remesa
+          New shipment
         </button>
       </div>
 
@@ -478,7 +478,7 @@ export default function RemesasPage() {
         >
           <AlertTriangle size={16} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
           <div>
-            <p className="text-xs font-semibold mb-1" style={{ color: '#D97706' }}>Atención requerida</p>
+            <p className="text-xs font-semibold mb-1" style={{ color: '#D97706' }}>Attention required</p>
             {attention.map(r => (
               <p key={r.id} className="text-xs" style={{ color: '#525252' }}>
                 <span className="mono font-semibold" style={{ color: '#B45309' }}>{r.numero_invoice}</span>
@@ -500,8 +500,8 @@ export default function RemesasPage() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<span style={{ fontSize: 22 }}>📦</span>}
-            title="Sin remesas en esta categoría"
-            description="Las remesas aparecerán aquí cuando los agentes procesen los emails de invoice."
+            title="No shipments in this category"
+            description="Shipments will appear here when agents process invoice emails."
           />
         ) : (
           <table className="w-full">

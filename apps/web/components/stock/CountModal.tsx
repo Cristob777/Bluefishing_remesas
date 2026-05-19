@@ -60,14 +60,14 @@ export function CountModal({ recepcion, onClose, onSaved }: CountModalProps) {
 
       if (!res.ok) {
         const err = await res.json()
-        toast.error(err.error ?? 'Error guardando conteo')
+        toast.error(err.error ?? 'Error saving count')
         return
       }
 
       toast.success(
         diffs.length > 0
           ? `Conteo guardado · ${diffs.length} diferencia(s) — Sebastian notificado`
-          : 'Conteo guardado · Sin diferencias ✓',
+          : 'Count saved · No discrepancies ✓',
         { duration: 4000 }
       )
       onSaved()
@@ -185,7 +185,7 @@ export function CountModal({ recepcion, onClose, onSaved }: CountModalProps) {
           <div className="flex items-center gap-3">
             <input
               type="text"
-              placeholder="Contado por..."
+              placeholder="Counted by..."
               value={contadoPor}
               onChange={e => setContadoPor(e.target.value)}
               className="flex-1 input"

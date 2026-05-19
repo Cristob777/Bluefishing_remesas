@@ -31,15 +31,15 @@ function todayStr() { return new Date().toISOString().split('T')[0] }
 // ── Action meta ───────────────────────────────────────────────────────────────
 
 const META: Record<string, { icon: string; iconBg: string; color: string; border: string; label: string; stage: string }> = {
-  INSTRUCCION_PAGO:      { icon: '📋', iconBg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE', label: 'Instrucción pago',   stage: 'I'   },
-  EMITIR_ORDEN_PAGO:     { icon: '🏦', iconBg: '#F0FDF4', color: '#059669', border: '#A7F3D0', label: 'Orden de pago',      stage: 'II'  },
-  CONFIRMAR_PAGO_BANCARIO:{ icon: '✅', iconBg: '#ECFDF5', color: '#047857', border: '#6EE7B7', label: 'Confirmación banco', stage: 'II' },
-  CONFIRMAR_PROVISION:   { icon: '⚡', iconBg: '#FEF2F2', color: '#DC2626', border: '#FECACA', label: 'Provisión fondos',   stage: 'III' },
-  INGRESAR_STOCK:        { icon: '📦', iconBg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE', label: 'Ingreso stock',      stage: 'IV'  },
-  RECLAMO_PROVEEDOR:     { icon: '⚠️', iconBg: '#FFFBEB', color: '#B45309', border: '#FDE68A', label: 'Reclamo proveedor', stage: 'IV'  },
-  VINCULAR_DESPACHO:     { icon: '🔗', iconBg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE', label: 'Vincular despacho', stage: 'I-II'},
-  APROBAR_OPERACION:     { icon: '🔒', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Aprobación ≥5M',    stage: 'V'   },
-  ARCHIVAR_EXPEDIENTE:   { icon: '🗄️', iconBg: '#F9FAFB', color: '#374151', border: '#D1D5DB', label: 'Archivar expediente',stage: 'V'  },
+  INSTRUCCION_PAGO:      { icon: '📋', iconBg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE', label: 'Payment instruction',   stage: 'I'   },
+  EMITIR_ORDEN_PAGO:     { icon: '🏦', iconBg: '#F0FDF4', color: '#059669', border: '#A7F3D0', label: 'Payment order',      stage: 'II'  },
+  CONFIRMAR_PAGO_BANCARIO:{ icon: '✅', iconBg: '#ECFDF5', color: '#047857', border: '#6EE7B7', label: 'Bank confirmation', stage: 'II' },
+  CONFIRMAR_PROVISION:   { icon: '⚡', iconBg: '#FEF2F2', color: '#DC2626', border: '#FECACA', label: 'Customs provision',   stage: 'III' },
+  INGRESAR_STOCK:        { icon: '📦', iconBg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE', label: 'Stock entry',      stage: 'IV'  },
+  RECLAMO_PROVEEDOR:     { icon: '⚠️', iconBg: '#FFFBEB', color: '#B45309', border: '#FDE68A', label: 'Supplier claim', stage: 'IV'  },
+  VINCULAR_DESPACHO:     { icon: '🔗', iconBg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE', label: 'Link dispatch', stage: 'I-II'},
+  APROBAR_OPERACION:     { icon: '🔒', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Approval ≥5M CLP',    stage: 'V'   },
+  ARCHIVAR_EXPEDIENTE:   { icon: '🗄️', iconBg: '#F9FAFB', color: '#374151', border: '#D1D5DB', label: 'Archive file',stage: 'V'  },
 }
 
 // ── Shared: invoice detail row ────────────────────────────────────────────────
@@ -64,7 +64,7 @@ const PRESETS = [
   { label: '30/70', anticipo: 30 },
   { label: '50/50', anticipo: 50 },
   { label: '100%',  anticipo: 100 },
-  { label: 'Personalizado', anticipo: null },
+  { label: 'Custom', anticipo: null },
 ]
 
 // ── Form 1: Instrucción de pago ───────────────────────────────────────────────
@@ -74,18 +74,18 @@ function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoActi
   const [customPct, setCustomPct] = useState(40)
   const [notas, setNotas]         = useState('')
 
-  const pct        = preset === 'Personalizado' ? customPct : PRESETS.find(p => p.label === preset)?.anticipo ?? null
+  const pct        = preset === 'Custom' ? customPct : PRESETS.find(p => p.label === preset)?.anticipo ?? null
   const saldoPct   = pct !== null ? 100 - pct : null
   const mAnticipo  = pct !== null ? action.monto_original * pct / 100 : null
   const mSaldo     = saldoPct !== null && saldoPct > 0 ? action.monto_original * saldoPct / 100 : null
-  const condicion  = preset === 'Personalizado' && pct !== null ? `${pct}/${100 - pct}` : preset ?? ''
+  const condicion  = preset === 'Custom' && pct !== null ? `${pct}/${100 - pct}` : preset ?? ''
 
   return (
     <div className="space-y-4 pt-4">
       <DetailRow items={[
         { label: 'Proveedor', value: action.proveedor },
         { label: 'Invoice',   value: action.invoice },
-        { label: 'Monto total', value: fmtAmt(action.monto_original, action.moneda), highlight: true },
+        { label: 'Total amount', value: fmtAmt(action.monto_original, action.moneda), highlight: true },
       ]} />
 
       <div>
@@ -101,7 +101,7 @@ function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoActi
             </button>
           ))}
         </div>
-        {preset === 'Personalizado' && (
+        {preset === 'Custom' && (
           <div className="mt-3 flex items-center gap-3">
             <span className="text-xs font-medium" style={{ color: '#6B7280' }}>Anticipo</span>
             <input type="number" min={1} max={99} value={customPct}
@@ -643,13 +643,13 @@ export default function ActionsPage() {
       }
       setItems(prev => prev.map(i => i.action.id === id ? { ...i, status: 'completed' } : i))
       setExpandedId(null)
-      toast.success('Acción completada', { description: 'Registrado en el sistema.' })
+      toast.success('Action completed', { description: 'Registrado en el sistema.' })
       // Reload after a brief moment so the completed action disappears
       setTimeout(loadActions, 1200)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error desconocido'
       setItems(prev => prev.map(i => i.action.id === id ? { ...i, status: 'error', errorMsg: msg } : i))
-      toast.error('Error al procesar', { description: msg })
+      toast.error('Processing error', { description: msg })
     } finally {
       setProcessingId(null)
     }
@@ -686,12 +686,12 @@ export default function ActionsPage() {
   })).filter(g => g.actions.length > 0)
 
   const STAGE_LABELS: Record<string, string> = {
-    'I': 'Etapa I — Invoice & Instrucción',
+    'I': 'Stage I — Invoice & Instruction',
     'I-II': 'Etapa I–II — Despacho aduanero',
-    'II': 'Etapa II — Pagos al proveedor',
-    'III': 'Etapa III — Provisión de fondos',
-    'IV': 'Etapa IV — Recepción mercadería',
-    'V': 'Etapa V — Cierre & Reconciliación',
+    'II': 'Stage II — Supplier payments',
+    'III': 'Stage III — Customs provision',
+    'IV': 'Stage IV — Goods receipt',
+    'V': 'Stage V — Closing & Reconciliation',
   }
 
   return (
@@ -710,7 +710,7 @@ export default function ActionsPage() {
             style={pending > 0 ? { background: '#F5F5F4', color: '#525252', border: '1px solid #E7E5E4' } : { background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
           >
             <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot inline-block" style={{ background: pending > 0 ? '#525252' : '#059669' }} />
-            {pending > 0 ? `${pending} pendientes` : 'Todo al día'}
+            {pending > 0 ? `${pending} pendientes` : 'All up to date'}
           </span>
           {urgent > 0 && (
             <span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>

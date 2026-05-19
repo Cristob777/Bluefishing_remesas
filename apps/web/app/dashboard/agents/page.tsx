@@ -83,11 +83,11 @@ function ReasoningPanel({ log }: { log: AgentLog }) {
 function relTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const min  = Math.floor(diff / 60000)
-  if (min < 1)  return 'ahora'
-  if (min < 60) return `hace ${min}m`
+  if (min < 1)  return 'just now'
+  if (min < 60) return `${min}m ago`
   const h = Math.floor(min / 60)
-  if (h < 24)   return `hace ${h}h`
-  return `hace ${Math.floor(h / 24)}d`
+  if (h < 24)   return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
 }
 
 export default function AgentsPage() {
@@ -150,7 +150,7 @@ export default function AgentsPage() {
         <div className="relative">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Sistema</p>
           <h1 className="text-4xl font-bold text-white">Agentes</h1>
-          <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>4 agentes Claude activos · actividad en tiempo real</p>
+          <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>4 active Claude agents · real-time activity</p>
         </div>
       </div>
 
@@ -223,8 +223,8 @@ export default function AgentsPage() {
           ) : !logs.length ? (
             <EmptyState
               icon={<Bot size={20} style={{ color: '#A3A3A3' }} />}
-              title="Los agentes están en espera"
-              description="Se activarán cuando llegue el primer email. Conecta Gmail para empezar."
+              title="Agents are standing by"
+              description="They will activate when the first email arrives. Connect Gmail to get started."
             />
           ) : (
             <div className="divide-y" style={{ borderColor: '#F5F5F4' }}>
