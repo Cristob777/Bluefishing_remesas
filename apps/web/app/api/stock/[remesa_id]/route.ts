@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth, withRole, type AuthUser } from '@/lib/auth'
+import { withAuth, withRole, readJsonBody, type AuthUser } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
 type Params = { params: Promise<{ remesa_id: string }> }
@@ -43,9 +43,11 @@ export const POST = withRole(['warehouse', 'owner', 'finance'], async (
 
   let body: StockPostBody
   try {
-    body = (await req.json()) as StockPostBody
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    body = (await readJsonBody(req, 50_000)) as StockPostBody
+  } catch (err: unknown) {
+    const status = (err as { status?: number }).status ?? 400
+    const message = err instanceof Error ? err.message : 'Invalid JSON'
+    return NextResponse.json({ error: message }, { status })
   }
 
   const { data: recepcion, error: recError } = await supabase
