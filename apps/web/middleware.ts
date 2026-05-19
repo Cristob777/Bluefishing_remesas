@@ -53,31 +53,34 @@ function jwtNotExpired(token: string): boolean {
 function isAuthenticated(req: NextRequest): boolean {
   const cookieHeader = req.headers.get('cookie') ?? ''
 
-  // @supabase/ssr sets: sb-<project>-auth-token (JSON with access_token)
-  // Also check sb-<project>-auth-token.0 (chunked) and legacy formats
-  const authTokenMatch = cookieHeader.match(/sb-[^=]+-auth-token(?:\.\d+)?=([^;]+)/)
-  if (authTokenMatch) {
-    try {
-      const raw     = decodeURIComponent(authTokenMatch[1])
-      const parsed  = JSON.parse(raw)
-      const session = Array.isArray(parsed) ? parsed[0] : parsed
-      const token   = session?.access_token
-      if (token && jwtNotExpired(token)) return true
-    } catch { /* continue */ }
-  }
+  // Find ALL cookies that look like Supabase auth cookies (any format/version)
+  // @supabase/ssr uses: sb-<ref>-auth-token, sb-<ref>-auth-token.0, etc.
+  const allCookies = cookieHeader.split(';').map(c => c.trim())
 
-  // @supabase/ssr v0.5+ stores access token directly in sb-<proj>-auth-token.0
-  // as a plain JSON string: {"access_token":"eyJ...", ...}
-  const chunks = cookieHeader.match(/sb-[^=]+-auth-token\.\d+=([^;]+)/g)
-  if (chunks) {
+  for (const cookie of allCookies) {
+    const eqIdx = cookie.indexOf('=')
+    if (eqIdx === -1) continue
+    const name  = cookie.slice(0, eqIdx).trim()
+    const value = cookie.slice(eqIdx + 1).trim()
+
+    // Match any Supabase auth cookie
+    if (!/^sb-.+(auth-token|access-token)/.test(name)) continue
+
     try {
-      const combined = chunks
-        .map(c => decodeURIComponent(c.split('=').slice(1).join('=')))
-        .join('')
-      const session = JSON.parse(combined)
-      const token   = session?.access_token
-      if (token && jwtNotExpired(token)) return true
-    } catch { /* continue */ }
+      const decoded = decodeURIComponent(value)
+
+      // Format 1: JSON object with access_token
+      if (decoded.startsWith('{') || decoded.startsWith('[')) {
+        const parsed  = JSON.parse(decoded)
+        const session = Array.isArray(parsed) ? parsed[0] : parsed
+        const token   = session?.access_token
+        if (token && jwtNotExpired(token)) return true
+      }
+
+      // Format 2: raw JWT (eyJ...)
+      if (decoded.startsWith('eyJ') && jwtNotExpired(decoded)) return true
+
+    } catch { /* continue to next cookie */ }
   }
 
   return false
