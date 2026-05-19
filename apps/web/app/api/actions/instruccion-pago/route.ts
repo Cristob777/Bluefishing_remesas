@@ -70,7 +70,7 @@ export const POST = withRole(['owner'], async (req: NextRequest, user: AuthUser)
       tipo:         'PAGO_PENDIENTE',
       mensaje:      `Instrucción de pago recibida — condición ${condicion_pago}. ${notas ?? ''}`.trim(),
       urgente:      false,
-      destinatario: 'hector',
+      destinatario: 'finance',
     })
 
     await supabase.from('agent_logs').insert({

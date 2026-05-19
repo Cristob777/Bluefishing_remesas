@@ -61,7 +61,7 @@ RETURNING id
 INSERT INTO alertas (remesa_id, tipo, mensaje, urgente, destinatario)
 VALUES ('<remesa_id>', 'PROVISION_URGENTE',
   '⚠ Provisión fondos despacho <despacho> vence en <N> días — CLP $<monto_formateado>',
-  true, 'hector')
+  true, 'finance')
 RETURNING id
 
 **Paso 6** — Actualiza estado de remesa si se encontró:

@@ -129,7 +129,7 @@ function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoActi
       </div>
 
       <div>
-        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Notas para Hector</label>
+        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Notes for Finance</label>
         <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} placeholder="Banco destino, urgencia, instrucciones adicionales..."
           className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border resize-none focus:outline-none"
           style={{ borderColor: '#D1D5DB', color: '#111827' }} />
@@ -139,7 +139,7 @@ function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoActi
         disabled={!preset}
         className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
         style={{ background: preset ? 'linear-gradient(135deg, #059669, #047857)' : '#9CA3AF' }}>
-        Enviar instrucción a Hector →
+        Send to Finance →
       </button>
     </div>
   )
@@ -155,7 +155,7 @@ function EmitirOrdenPagoForm({ action, onSubmit }: { action: EmitirOrdenPagoActi
     <div className="space-y-4 pt-4">
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
         <div className="px-4 py-3" style={{ background: '#F0FDF4', borderBottom: '1px solid #D1FAE5' }}>
-          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#059669' }}>Instrucción de Sebastian</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#059669' }}>Owner's instruction</p>
           <p className="text-xs" style={{ color: '#374151' }}>{action.instruccion_notas}</p>
         </div>
         <div className="grid grid-cols-3 gap-3 px-4 py-3" style={{ background: '#F9FAFB' }}>
@@ -302,7 +302,7 @@ function ConfirmarProvisionForm({ action, onSubmit }: { action: ConfirmarProvisi
         disabled={!fechaPago}
         className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
         style={{ background: fechaPago ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : '#9CA3AF' }}>
-        Confirmar pago realizado a AGENSA →
+        Confirm customs payment →
       </button>
     </div>
   )
@@ -441,7 +441,7 @@ function VincularDespachoForm({ action, onSubmit }: { action: VincularDespachoAc
 
       <div className="rounded-xl p-3" style={{ background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
         <p className="text-xs" style={{ color: '#3730A3' }}>
-          El número de despacho es asignado por AGENSA al iniciar el trámite aduanero. Este número vincula el invoice con las provisiones de fondos y el DIN futuro.
+          The dispatch number is assigned by the customs agency when the process begins. Este número vincula el invoice con las provisiones de fondos y el DIN futuro.
         </p>
       </div>
 

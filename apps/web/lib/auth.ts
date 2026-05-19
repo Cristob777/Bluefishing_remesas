@@ -21,7 +21,7 @@ function buildRoleMap(): Record<string, UserRole> {
 const ROLE_MAP = buildRoleMap()
 
 const ALLOWED_ORIGINS = new Set([
-  'https://bluefishing-agents.vercel.app',
+  ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
   ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
 ])
 

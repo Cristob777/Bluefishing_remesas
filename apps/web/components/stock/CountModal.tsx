@@ -66,7 +66,7 @@ export function CountModal({ recepcion, onClose, onSaved }: CountModalProps) {
 
       toast.success(
         diffs.length > 0
-          ? `Conteo guardado · ${diffs.length} diferencia(s) — Sebastian notificado`
+          ? `Conteo guardado · ${diffs.length} diferencia(s) — Owner notified`
           : 'Count saved · No discrepancies ✓',
         { duration: 4000 }
       )
@@ -178,7 +178,7 @@ export function CountModal({ recepcion, onClose, onSaved }: CountModalProps) {
           {diffs.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
               <span className="text-xs font-bold" style={{ color: '#D97706' }}>
-                ⚠ {diffs.length} SKU{diffs.length > 1 ? 's' : ''} con diferencias — Sebastian será notificado automáticamente
+                ⚠ {diffs.length} SKU{diffs.length > 1 ? 's' : ''} con diferencias — Owner will be notified automatically
               </span>
             </div>
           )}

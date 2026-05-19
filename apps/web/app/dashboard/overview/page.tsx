@@ -125,7 +125,7 @@ export default async function OverviewPage() {
               <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: '#4ADE80', display: 'inline-block' }} />
               <span className="text-xs font-semibold" style={{ color: 'rgba(74,222,128,0.9)' }}>4 active agents</span>
             </div>
-            <p className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>BLUEFISHING · MI TIENDA SPA</p>
+            <p className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>{process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Import Operations'}</p>
           </div>
         </div>
       </div>

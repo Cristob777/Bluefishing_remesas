@@ -61,8 +61,8 @@ export function validateWebhookPayload(payload: unknown): ValidationResult {
     }
   }
 
-  if (p.account !== 'sebastian' && p.account !== 'hector') {
-    return { valid: false, error: 'account must be "sebastian" or "hector"' }
+  if (typeof p.account !== 'string' || p.account.trim().length === 0) {
+    return { valid: false, error: 'account must be a non-empty string' }
   }
 
   return { valid: true }

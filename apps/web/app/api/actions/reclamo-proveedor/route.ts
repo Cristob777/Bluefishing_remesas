@@ -64,7 +64,7 @@ export const POST = withRole(['owner', 'finance'], async (req: NextRequest, user
       tipo:         'DIFERENCIA_STOCK',
       mensaje:      `Reclamo enviado a ${proveedor ?? 'proveedor'} — Invoice ${invoice ?? '—'}. ${texto_reclamo.substring(0, 100)}`,
       urgente:      false,
-      destinatario: 'sebastian',
+      destinatario: 'owner',
     })
 
     await supabase.from('agent_logs').insert({

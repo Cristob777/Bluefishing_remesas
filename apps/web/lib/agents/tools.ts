@@ -7,7 +7,7 @@ function getSupabase() { return db }
 
 export const supabaseTool: Anthropic.Tool = {
   name: 'supabase_execute_sql',
-  description: `Execute SQL on the Bluefishing PostgreSQL database (service_role access).
+  description: `Execute SQL on the company PostgreSQL database (service_role access).
 
 IMPORTANT: For INSERT/UPDATE/DELETE always include a RETURNING clause so you get the row back.
   Good:  INSERT INTO remesas (...) VALUES (...) RETURNING id, estado

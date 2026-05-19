@@ -139,11 +139,15 @@ export function SidebarNav() {
             className="flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold flex-shrink-0"
             style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', color: '#FFF' }}
           >
-            SC
+            {(process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'Ad').slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold leading-tight truncate" style={{ color: '#0A0A0A' }}>Sebastian Cáceres</p>
-            <p className="text-[10px] leading-tight" style={{ color: '#A3A3A3' }}>MI TIENDA SPA</p>
+            <p className="text-[12px] font-semibold leading-tight truncate" style={{ color: '#0A0A0A' }}>
+              {process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'Admin'}
+            </p>
+            <p className="text-[10px] leading-tight" style={{ color: '#A3A3A3' }}>
+              {process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Import Operations'}
+            </p>
           </div>
         </div>
       </div>

@@ -83,7 +83,7 @@ export const POST = withRole(['warehouse', 'owner', 'finance'], async (
         tipo:         'DIFERENCIA_STOCK',
         mensaje:      `Diferencias de stock en recepción del ${body.fecha_recepcion ?? 'hoy'}. Revisar con proveedor.`,
         urgente:      false,
-        destinatario: 'sebastian',
+        destinatario: 'owner',
       }),
       supabase.from('stock_recepciones')
         .update({ estado: 'CON_DIFERENCIAS' })
