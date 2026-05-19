@@ -176,7 +176,7 @@ export interface WebhookEmailPayload {
   email_body: string
   attachment_text?: string
   attachment_filename?: string
-  account: 'sebastian' | 'hector'
+  account: string  // 'sebastian' | 'hector' | 'ops' | any named slot
 }
 
 export interface ClassifiedEmail extends WebhookEmailPayload {

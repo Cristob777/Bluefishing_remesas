@@ -8,7 +8,7 @@ export interface ExtractedEmail {
   to:          string
   date:        string
   bodyText:    string
-  account:     'sebastian' | 'hector'
+  account:     string  // 'sebastian' | 'hector' | 'ops' | any named slot
   attachments: Array<{ filename: string; contentType: string; size: number }>
 }
 
