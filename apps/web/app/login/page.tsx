@@ -70,10 +70,10 @@ export default async function LoginPage({
             margin: '0 auto 1rem', fontSize: 22,
           }}>🎣</div>
           <h1 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#0A0A0A', margin: 0 }}>
-            Import Workflow Agents
+            Agentes de Importación
           </h1>
           <p style={{ fontSize: '0.8125rem', color: '#A3A3A3', marginTop: '0.25rem' }}>
-            Sign in to your account
+            Inicia sesión en tu cuenta
           </p>
         </div>
 
@@ -82,10 +82,10 @@ export default async function LoginPage({
 
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#525252', marginBottom: '0.375rem' }}>
-              Email
+              Correo electrónico
             </label>
             <input type="email" name="email" required autoComplete="email"
-              placeholder="your@email.com"
+              placeholder="tu@email.com"
               style={{ width: '100%', padding: '0.5rem 0.75rem', fontSize: '0.875rem',
                 backgroundColor: '#FAFAF9', border: '1px solid #E7E5E4', borderRadius: '8px',
                 color: '#0A0A0A', outline: 'none', boxSizing: 'border-box' }}
@@ -94,7 +94,7 @@ export default async function LoginPage({
 
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#525252', marginBottom: '0.375rem' }}>
-              Password
+              Contraseña
             </label>
             <input type="password" name="password" required autoComplete="current-password"
               placeholder="••••••••"
@@ -106,7 +106,7 @@ export default async function LoginPage({
 
           {hasErr && (
             <p style={{ fontSize: '0.8125rem', color: '#DC2626', margin: 0 }}>
-              Invalid email or password
+              Correo o contraseña inválidos
             </p>
           )}
 
@@ -115,7 +115,7 @@ export default async function LoginPage({
             background: '#4F46E5', color: '#FFFFFF', border: 'none',
             borderRadius: '8px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer',
           }}>
-            Sign in
+            Iniciar sesión
           </button>
         </form>
       </div>

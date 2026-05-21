@@ -24,22 +24,22 @@ function fmtCLP(n: number) {
 function fmtAmt(n: number, moneda: string) {
   if (moneda === 'CLP') return fmtCLP(n)
   const dec = moneda === 'JPY' ? 0 : 2
-  return `${moneda} ${n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })}`
+  return `${moneda} ${n.toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec })}`
 }
 function todayStr() { return new Date().toISOString().split('T')[0] }
 
 // ── Action meta ───────────────────────────────────────────────────────────────
 
 const META: Record<string, { icon: string; iconBg: string; color: string; border: string; label: string; stage: string }> = {
-  INSTRUCCION_PAGO:      { icon: '📋', iconBg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE', label: 'Payment instruction',   stage: 'I'   },
-  EMITIR_ORDEN_PAGO:     { icon: '🏦', iconBg: '#F0FDF4', color: '#059669', border: '#A7F3D0', label: 'Payment order',      stage: 'II'  },
-  CONFIRMAR_PAGO_BANCARIO:{ icon: '✅', iconBg: '#ECFDF5', color: '#047857', border: '#6EE7B7', label: 'Bank confirmation', stage: 'II' },
-  CONFIRMAR_PROVISION:   { icon: '⚡', iconBg: '#FEF2F2', color: '#DC2626', border: '#FECACA', label: 'Customs provision',   stage: 'III' },
-  INGRESAR_STOCK:        { icon: '📦', iconBg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE', label: 'Stock entry',      stage: 'IV'  },
-  RECLAMO_PROVEEDOR:     { icon: '⚠️', iconBg: '#FFFBEB', color: '#B45309', border: '#FDE68A', label: 'Supplier claim', stage: 'IV'  },
-  VINCULAR_DESPACHO:     { icon: '🔗', iconBg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE', label: 'Link dispatch', stage: 'I-II'},
-  APROBAR_OPERACION:     { icon: '🔒', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Approval ≥5M CLP',    stage: 'V'   },
-  ARCHIVAR_EXPEDIENTE:   { icon: '🗄️', iconBg: '#F9FAFB', color: '#374151', border: '#D1D5DB', label: 'Archive file',stage: 'V'  },
+  INSTRUCCION_PAGO:      { icon: '📋', iconBg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE', label: 'Instrucción de pago', stage: 'I'   },
+  EMITIR_ORDEN_PAGO:     { icon: '🏦', iconBg: '#F0FDF4', color: '#059669', border: '#A7F3D0', label: 'Orden de pago',       stage: 'II'  },
+  CONFIRMAR_PAGO_BANCARIO:{ icon: '✅', iconBg: '#ECFDF5', color: '#047857', border: '#6EE7B7', label: 'Confirmación banco', stage: 'II' },
+  CONFIRMAR_PROVISION:   { icon: '⚡', iconBg: '#FEF2F2', color: '#DC2626', border: '#FECACA', label: 'Provisión aduanera',  stage: 'III' },
+  INGRESAR_STOCK:        { icon: '📦', iconBg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE', label: 'Ingreso de stock',    stage: 'IV'  },
+  RECLAMO_PROVEEDOR:     { icon: '⚠️', iconBg: '#FFFBEB', color: '#B45309', border: '#FDE68A', label: 'Reclamo a proveedor', stage: 'IV'  },
+  VINCULAR_DESPACHO:     { icon: '🔗', iconBg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE', label: 'Vincular despacho',   stage: 'I-II'},
+  APROBAR_OPERACION:     { icon: '🔒', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Aprobación ≥5M CLP',  stage: 'V'   },
+  ARCHIVAR_EXPEDIENTE:   { icon: '🗄️', iconBg: '#F9FAFB', color: '#374151', border: '#D1D5DB', label: 'Archivar expediente',stage: 'V'  },
 }
 
 // ── Shared: invoice detail row ────────────────────────────────────────────────
@@ -64,7 +64,7 @@ const PRESETS = [
   { label: '30/70', anticipo: 30 },
   { label: '50/50', anticipo: 50 },
   { label: '100%',  anticipo: 100 },
-  { label: 'Custom', anticipo: null },
+  { label: 'Personalizado', anticipo: null },
 ]
 
 // ── Form 1: Instrucción de pago ───────────────────────────────────────────────
@@ -74,18 +74,18 @@ function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoActi
   const [customPct, setCustomPct] = useState(40)
   const [notas, setNotas]         = useState('')
 
-  const pct        = preset === 'Custom' ? customPct : PRESETS.find(p => p.label === preset)?.anticipo ?? null
+  const pct        = preset === 'Personalizado' ? customPct : PRESETS.find(p => p.label === preset)?.anticipo ?? null
   const saldoPct   = pct !== null ? 100 - pct : null
   const mAnticipo  = pct !== null ? action.monto_original * pct / 100 : null
   const mSaldo     = saldoPct !== null && saldoPct > 0 ? action.monto_original * saldoPct / 100 : null
-  const condicion  = preset === 'Custom' && pct !== null ? `${pct}/${100 - pct}` : preset ?? ''
+  const condicion  = preset === 'Personalizado' && pct !== null ? `${pct}/${100 - pct}` : preset ?? ''
 
   return (
     <div className="space-y-4 pt-4">
       <DetailRow items={[
         { label: 'Proveedor', value: action.proveedor },
-        { label: 'Invoice',   value: action.invoice },
-        { label: 'Total amount', value: fmtAmt(action.monto_original, action.moneda), highlight: true },
+        { label: 'Factura',   value: action.invoice },
+        { label: 'Monto total', value: fmtAmt(action.monto_original, action.moneda), highlight: true },
       ]} />
 
       <div>
@@ -101,7 +101,7 @@ function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoActi
             </button>
           ))}
         </div>
-        {preset === 'Custom' && (
+        {preset === 'Personalizado' && (
           <div className="mt-3 flex items-center gap-3">
             <span className="text-xs font-medium" style={{ color: '#6B7280' }}>Anticipo</span>
             <input type="number" min={1} max={99} value={customPct}
@@ -129,7 +129,7 @@ function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoActi
       </div>
 
       <div>
-        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Notes for Finance</label>
+        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Notas para Finanzas</label>
         <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} placeholder="Banco destino, urgencia, instrucciones adicionales..."
           className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border resize-none focus:outline-none"
           style={{ borderColor: '#D1D5DB', color: '#111827' }} />
@@ -139,7 +139,7 @@ function InstruccionPagoForm({ action, onSubmit }: { action: InstruccionPagoActi
         disabled={!preset}
         className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
         style={{ background: preset ? 'linear-gradient(135deg, #059669, #047857)' : '#9CA3AF' }}>
-        Send to Finance →
+        Enviar a Finanzas →
       </button>
     </div>
   )
@@ -155,12 +155,12 @@ function EmitirOrdenPagoForm({ action, onSubmit }: { action: EmitirOrdenPagoActi
     <div className="space-y-4 pt-4">
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
         <div className="px-4 py-3" style={{ background: '#F0FDF4', borderBottom: '1px solid #D1FAE5' }}>
-          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#059669' }}>Owner's instruction</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#059669' }}>Instrucción del dueño</p>
           <p className="text-xs" style={{ color: '#374151' }}>{action.instruccion_notas}</p>
         </div>
         <div className="grid grid-cols-3 gap-3 px-4 py-3" style={{ background: '#F9FAFB' }}>
           <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Tipo</p><p className="text-xs font-bold" style={{ color: '#374151' }}>{action.tipo_pago} ({action.condicion_pago})</p></div>
-          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Invoice</p><p className="text-xs font-mono font-bold" style={{ color: '#374151' }}>{action.invoice}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Factura</p><p className="text-xs font-mono font-bold" style={{ color: '#374151' }}>{action.invoice}</p></div>
           <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Monto</p><p className="text-sm font-bold" style={{ color: '#059669' }}>{fmtAmt(action.monto_pago, action.moneda)}</p></div>
         </div>
       </div>
@@ -302,7 +302,7 @@ function ConfirmarProvisionForm({ action, onSubmit }: { action: ConfirmarProvisi
         disabled={!fechaPago}
         className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
         style={{ background: fechaPago ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : '#9CA3AF' }}>
-        Confirm customs payment →
+        Confirmar pago de aduana →
       </button>
     </div>
   )
@@ -434,14 +434,14 @@ function VincularDespachoForm({ action, onSubmit }: { action: VincularDespachoAc
     <div className="space-y-4 pt-4">
       <DetailRow items={[
         { label: 'Proveedor',       value: action.proveedor },
-        { label: 'Invoice',         value: action.invoice },
+        { label: 'Factura',         value: action.invoice },
         { label: 'Monto / Moneda',  value: fmtAmt(action.monto_original, action.moneda) },
-        { label: 'Fecha invoice',   value: new Date(action.fecha_invoice).toLocaleDateString('es-CL') },
+        { label: 'Fecha factura',   value: new Date(action.fecha_invoice).toLocaleDateString('es-CL') },
       ]} />
 
       <div className="rounded-xl p-3" style={{ background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
         <p className="text-xs" style={{ color: '#3730A3' }}>
-          The dispatch number is assigned by the customs agency when the process begins. Este número vincula el invoice con las provisiones de fondos y el DIN futuro.
+          El número de despacho es asignado por la agencia de aduanas cuando inicia el proceso. Este número vincula la factura con las provisiones de fondos y el DIN futuro.
         </p>
       </div>
 
@@ -643,13 +643,13 @@ export default function ActionsPage() {
       }
       setItems(prev => prev.map(i => i.action.id === id ? { ...i, status: 'completed' } : i))
       setExpandedId(null)
-      toast.success('Action completed', { description: 'Registrado en el sistema.' })
+      toast.success('Acción completada', { description: 'Registrado en el sistema.' })
       // Reload after a brief moment so the completed action disappears
       setTimeout(loadActions, 1200)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error desconocido'
       setItems(prev => prev.map(i => i.action.id === id ? { ...i, status: 'error', errorMsg: msg } : i))
-      toast.error('Processing error', { description: msg })
+      toast.error('Error al procesar', { description: msg })
     } finally {
       setProcessingId(null)
     }
@@ -686,12 +686,12 @@ export default function ActionsPage() {
   })).filter(g => g.actions.length > 0)
 
   const STAGE_LABELS: Record<string, string> = {
-    'I': 'Stage I — Invoice & Instruction',
+    'I':    'Etapa I — Factura e instrucción',
     'I-II': 'Etapa I–II — Despacho aduanero',
-    'II': 'Stage II — Supplier payments',
-    'III': 'Stage III — Customs provision',
-    'IV': 'Stage IV — Goods receipt',
-    'V': 'Stage V — Closing & Reconciliation',
+    'II':   'Etapa II — Pagos al proveedor',
+    'III':  'Etapa III — Provisión aduanera',
+    'IV':   'Etapa IV — Recepción de mercadería',
+    'V':    'Etapa V — Cierre y reconciliación',
   }
 
   return (
@@ -710,7 +710,7 @@ export default function ActionsPage() {
             style={pending > 0 ? { background: '#F5F5F4', color: '#525252', border: '1px solid #E7E5E4' } : { background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
           >
             <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot inline-block" style={{ background: pending > 0 ? '#525252' : '#059669' }} />
-            {pending > 0 ? `${pending} pendientes` : 'All up to date'}
+            {pending > 0 ? `${pending} pendientes` : 'Todo al día'}
           </span>
           {urgent > 0 && (
             <span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>

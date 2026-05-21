@@ -4,24 +4,24 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Bot } from 'lucide-react'
 
 function fmtCLP(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n)
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n)
 }
 function relTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const min  = Math.floor(diff / 60000)
-  if (min < 1)  return 'just now'
-  if (min < 60) return `${min}m ago`
+  if (min < 1)  return 'ahora'
+  if (min < 60) return `hace ${min} min`
   const h = Math.floor(min / 60)
-  if (h < 24)   return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
+  if (h < 24)   return `hace ${h} h`
+  return `hace ${Math.floor(h / 24)} d`
 }
 
 const AGENT_META: Record<string, { label: string; color: string; bg: string }> = {
-  invoice_intake:     { label: 'Invoice',   color: '#4F46E5', bg: '#EEF2FF' },
-  customs_funds:      { label: 'Customs',   color: '#D97706', bg: '#FFFBEB' },
-  din_reconciliation: { label: 'DIN',       color: '#7C3AED', bg: '#F5F3FF' },
-  landed_cost:        { label: 'L. Cost',   color: '#059669', bg: '#ECFDF5' },
-  manual_action:      { label: 'Manual',    color: '#525252', bg: '#F5F5F4' },
+  invoice_intake:     { label: 'Factura',  color: '#4F46E5', bg: '#EEF2FF' },
+  customs_funds:      { label: 'Aduana',   color: '#D97706', bg: '#FFFBEB' },
+  din_reconciliation: { label: 'DIN',      color: '#7C3AED', bg: '#F5F3FF' },
+  landed_cost:        { label: 'Costo',    color: '#059669', bg: '#ECFDF5' },
+  manual_action:      { label: 'Manual',   color: '#525252', bg: '#F5F5F4' },
 }
 
 const ALERTA_ICON: Record<string, string> = {
@@ -46,8 +46,8 @@ export default async function OverviewPage() {
       <div className="min-h-screen flex items-center justify-center p-8">
         <EmptyState
           icon={<span style={{ fontSize: 22 }}>⚙️</span>}
-          title="Configuration pending"
-          description="Supabase environment variables are not configured yet for this deployment."
+          title="Configuración pendiente"
+          description="Las variables de entorno de Supabase aún no están configuradas para este despliegue."
         />
       </div>
     )
@@ -81,15 +81,15 @@ export default async function OverviewPage() {
   const totalUSD = (usdExposure ?? []).reduce((s: number, r: { monto_original: number }) => s + (r.monto_original || 0), 0)
   const totalJPY = (jpyExposure ?? []).reduce((s: number, r: { monto_original: number }) => s + (r.monto_original || 0), 0)
 
-  const today = new Date().toLocaleDateString('en-US', {
+  const today = new Date().toLocaleDateString('es-CL', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
   const STAT_CARDS = [
-    { label: 'Active shipments',      value: stats.remesasActivas,      sub: 'in progress',           icon: '📦', accent: '#4F46E5', cssAccent: '#4F46E5', bg: '#EEF2FF' },
-    { label: 'Pending payments',     value: stats.pagosPendientes,     sub: 'orders to issue', icon: '💳', accent: '#D97706', cssAccent: '#D97706', bg: '#FFFBEB' },
-    { label: 'Urgent provisions', value: stats.provisionesUrgentes, sub: 'due in ≤ 3 days', icon: '⚡', accent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', cssAccent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', bg: stats.provisionesUrgentes > 0 ? '#FEF2F2' : '#ECFDF5' },
-    { label: 'Stock discrepancies',    value: stats.diferenciasStock,    sub: 'unresolved SKUs',  icon: '📊', accent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', cssAccent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', bg: stats.diferenciasStock > 0 ? '#FFFBEB' : '#ECFDF5' },
+    { label: 'Remesas activas',       value: stats.remesasActivas,      sub: 'en curso',             icon: '📦', accent: '#4F46E5', cssAccent: '#4F46E5', bg: '#EEF2FF' },
+    { label: 'Pagos pendientes',      value: stats.pagosPendientes,     sub: 'órdenes por emitir',   icon: '💳', accent: '#D97706', cssAccent: '#D97706', bg: '#FFFBEB' },
+    { label: 'Provisiones urgentes',  value: stats.provisionesUrgentes, sub: 'vencen en ≤ 3 días',   icon: '⚡', accent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', cssAccent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', bg: stats.provisionesUrgentes > 0 ? '#FEF2F2' : '#ECFDF5' },
+    { label: 'Diferencias de stock',  value: stats.diferenciasStock,    sub: 'SKUs sin resolver',    icon: '📊', accent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', cssAccent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', bg: stats.diferenciasStock > 0 ? '#FFFBEB' : '#ECFDF5' },
   ]
 
   return (
@@ -121,9 +121,9 @@ export default async function OverviewPage() {
         <div className="relative flex items-start justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Dashboard
+              Panel
             </p>
-            <h1 className="text-[2.6rem] font-bold tracking-tight text-white leading-none">Operations</h1>
+            <h1 className="text-[2.6rem] font-bold tracking-tight text-white leading-none">Operaciones</h1>
             <p className="text-sm mt-2.5 capitalize" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {today}
             </p>
@@ -134,9 +134,9 @@ export default async function OverviewPage() {
               style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)' }}
             >
               <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: '#4ADE80', display: 'inline-block' }} />
-              <span className="text-xs font-semibold" style={{ color: 'rgba(74,222,128,0.9)' }}>4 active agents</span>
+              <span className="text-xs font-semibold" style={{ color: 'rgba(74,222,128,0.9)' }}>4 agentes activos</span>
             </div>
-            <p className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>{process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Import Operations'}</p>
+            <p className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>{process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Operaciones de Importación'}</p>
           </div>
         </div>
       </div>
@@ -171,8 +171,8 @@ export default async function OverviewPage() {
       {/* ── FX Exposure ── */}
       <div className="px-8 mt-5 grid grid-cols-2 gap-4">
         {[
-          { flag: '🇺🇸', label: 'USD Exposure', value: `$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, currency: 'USD', iconBg: '#FEF3C7', accent: '#D97706' },
-          { flag: '🇯🇵', label: 'JPY Exposure', value: `¥${totalJPY.toLocaleString('ja-JP')}`, currency: 'JPY', iconBg: '#EEF2FF', accent: '#4F46E5' },
+          { flag: '🇺🇸', label: 'Exposición USD', value: `$${totalUSD.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, currency: 'USD', iconBg: '#FEF3C7', accent: '#D97706' },
+          { flag: '🇯🇵', label: 'Exposición JPY', value: `¥${totalJPY.toLocaleString('ja-JP')}`, currency: 'JPY', iconBg: '#EEF2FF', accent: '#4F46E5' },
         ].map(fx => (
           <div key={fx.currency} className="card p-5 flex items-center gap-4">
             <div
@@ -192,7 +192,7 @@ export default async function OverviewPage() {
                   {fx.currency}
                 </span>
               </div>
-              <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>in active shipments</p>
+              <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>en remesas activas</p>
             </div>
           </div>
         ))}
@@ -204,7 +204,7 @@ export default async function OverviewPage() {
         {/* Alertas — 3/5 */}
         <div className="col-span-3 card overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
-            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Active alerts</h2>
+            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Alertas activas</h2>
             {alertas && alertas.length > 0 && (
               <Badge variant="urgent">{alertas.length} pendientes</Badge>
             )}
@@ -213,8 +213,8 @@ export default async function OverviewPage() {
           {!alertas?.length ? (
             <EmptyState
               icon={<span style={{ fontSize: 22 }}>🔔</span>}
-              title="No active alerts"
-              description="All clear. Alerts appear here when agents detect situations that require attention."
+              title="Sin alertas activas"
+              description="Todo en orden. Las alertas aparecen aquí cuando los agentes detectan situaciones que requieren atención."
             />
           ) : (
             <ul>
@@ -254,15 +254,15 @@ export default async function OverviewPage() {
         {/* Agent activity — 2/5 */}
         <div className="col-span-2 card overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
-            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Agent activity</h2>
-            <span className="text-[11px]" style={{ color: '#A3A3A3' }}>Latest actions</span>
+            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Actividad de agentes</h2>
+            <span className="text-[11px]" style={{ color: '#A3A3A3' }}>Últimas acciones</span>
           </div>
 
           {!agentLogs?.length ? (
             <EmptyState
               icon={<Bot size={20} style={{ color: '#A3A3A3' }} />}
-              title="Agents are standing by"
-              description="They will activate when the first email arrives."
+              title="Agentes en espera"
+              description="Se activarán cuando llegue el primer correo."
             />
           ) : (
             <div>

@@ -30,11 +30,11 @@ interface Remesa {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const ESTADO_LABELS: Record<string, string> = {
-  INVOICE_RECIBIDO:    'Invoice',
-  PAGO_PENDIENTE:      'Payment Pending',
-  PAGO_PARCIAL:        'Partial Payment',
-  PAGO_COMPLETO:       'Payment Complete',
-  EN_ADUANA:           'In Customs',
+  INVOICE_RECIBIDO:    'Factura',
+  PAGO_PENDIENTE:      'Pago Pendiente',
+  PAGO_PARCIAL:        'Pago Parcial',
+  PAGO_COMPLETO:       'Pago Completo',
+  EN_ADUANA:           'En Aduana',
   PROVISION_RECIBIDA:  'Provisión',
   MERCADERIA_RECIBIDA: 'Mercadería',
   RECONCILIADO:        'Reconciliado',
@@ -54,11 +54,11 @@ const ESTADO_BADGE: Record<string, 'neutral' | 'pending' | 'warning' | 'success'
 const PIPELINE = ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL','PAGO_COMPLETO','EN_ADUANA','PROVISION_RECIBIDA','MERCADERIA_RECIBIDA','RECONCILIADO']
 
 const FILTER_GROUPS = [
-  { label: 'All',       estados: null },
-  { label: 'To pay',   estados: ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL'] },
-  { label: 'In transit', estados: ['PAGO_COMPLETO','EN_ADUANA'] },
-  { label: 'In process',  estados: ['PROVISION_RECIBIDA','MERCADERIA_RECIBIDA'] },
-  { label: 'Closed',    estados: ['RECONCILIADO'] },
+  { label: 'Todas',      estados: null },
+  { label: 'Por pagar',  estados: ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL'] },
+  { label: 'En tránsito', estados: ['PAGO_COMPLETO','EN_ADUANA'] },
+  { label: 'En proceso', estados: ['PROVISION_RECIBIDA','MERCADERIA_RECIBIDA'] },
+  { label: 'Cerradas',   estados: ['RECONCILIADO'] },
 ]
 
 const FLAG: Record<string, string> = { China: '🇨🇳', Japón: '🇯🇵', Japan: '🇯🇵' }
@@ -66,7 +66,7 @@ const FLAG: Record<string, string> = { China: '🇨🇳', Japón: '🇯🇵', Ja
 function fmtMonto(n: number, moneda: string) {
   if (moneda === 'JPY') return `¥${n.toLocaleString('ja-JP')}`
   const dec = moneda === 'CLP' ? 0 : 2
-  return `${moneda} ${n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })}`
+  return `${moneda} ${n.toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec })}`
 }
 
 function PipelineBar({ estado }: { estado: string }) {
@@ -86,12 +86,12 @@ function PipelineBar({ estado }: { estado: string }) {
 // ── Side panel ────────────────────────────────────────────────────────────────
 
 const PIPELINE_STEPS = [
-  { key: 'INVOICE_RECIBIDO',    label: 'Invoice received' },
-  { key: 'PAGO_PENDIENTE',      label: 'Payment instruction' },
-  { key: 'PAGO_COMPLETO',       label: 'Payments confirmed' },
-  { key: 'EN_ADUANA',           label: 'In customs' },
-  { key: 'PROVISION_RECIBIDA',  label: 'AGENSA provision' },
-  { key: 'MERCADERIA_RECIBIDA', label: 'Goods received' },
+  { key: 'INVOICE_RECIBIDO',    label: 'Factura recibida' },
+  { key: 'PAGO_PENDIENTE',      label: 'Instrucción de pago' },
+  { key: 'PAGO_COMPLETO',       label: 'Pagos confirmados' },
+  { key: 'EN_ADUANA',           label: 'En aduana' },
+  { key: 'PROVISION_RECIBIDA',  label: 'Provisión AGENSA' },
+  { key: 'MERCADERIA_RECIBIDA', label: 'Mercadería recibida' },
   { key: 'RECONCILIADO',        label: 'Reconciliado' },
 ]
 
@@ -144,7 +144,7 @@ function ReconciliacionMeter({ data }: { data: ReconcData }) {
               Delta {delta >= 0 ? '+' : ''}{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(delta)}
             </span>
             <span className="text-[10px] mono" style={{ color: '#A3A3A3' }}>
-              {ok ? `${Math.round(pct)}% tolerance` : 'EXCEEDS tolerance'}
+              {ok ? `${Math.round(pct)}% tolerancia` : 'EXCEDE tolerancia'}
             </span>
           </div>
           <div className="h-1.5 rounded-full overflow-hidden" style={{ background: ok ? '#D1FAE5' : '#FECACA' }}>
@@ -257,7 +257,7 @@ function SidePanel({
         {hasUrgent && (
           <div className="flex items-center gap-2 px-6 py-3" style={{ background: '#FEF2F2', borderBottom: '1px solid #FECACA' }}>
             <AlertTriangle size={14} style={{ color: '#DC2626', flexShrink: 0 }} />
-            <p className="text-xs font-medium" style={{ color: '#DC2626' }}>Has pending urgent alerts</p>
+            <p className="text-xs font-medium" style={{ color: '#DC2626' }}>Tiene alertas urgentes pendientes</p>
           </div>
         )}
 
@@ -307,9 +307,9 @@ function SidePanel({
             <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: '#A3A3A3' }}>Montos</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'Total invoice', value: fmtMonto(remesa.monto_original, remesa.moneda_origen), accent: '#0A0A0A' },
-                { label: 'Condition',     value: remesa.condicion_pago ?? '—',                         accent: '#525252' },
-                { label: 'Dispatch no.',   value: remesa.numero_despacho ?? '—',                        accent: '#4F46E5' },
+                { label: 'Total factura', value: fmtMonto(remesa.monto_original, remesa.moneda_origen), accent: '#0A0A0A' },
+                { label: 'Condición',     value: remesa.condicion_pago ?? '—',                         accent: '#525252' },
+                { label: 'N° Despacho',   value: remesa.numero_despacho ?? '—',                        accent: '#4F46E5' },
                 { label: 'DIN',           value: remesa.din_numero ?? '—',                             accent: '#7C3AED' },
               ].map(item => (
                 <div key={item.label} className="rounded-lg p-3" style={{ background: '#FAFAF9', border: '1px solid #E7E5E4' }}>
@@ -447,7 +447,7 @@ export default function RemesasPage() {
         </div>
         <button className="btn-primary">
           <Plus size={16} />
-          New shipment
+          Nueva remesa
         </button>
       </div>
 
@@ -478,7 +478,7 @@ export default function RemesasPage() {
         >
           <AlertTriangle size={16} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
           <div>
-            <p className="text-xs font-semibold mb-1" style={{ color: '#D97706' }}>Attention required</p>
+            <p className="text-xs font-semibold mb-1" style={{ color: '#D97706' }}>Requiere atención</p>
             {attention.map(r => (
               <p key={r.id} className="text-xs" style={{ color: '#525252' }}>
                 <span className="mono font-semibold" style={{ color: '#B45309' }}>{r.numero_invoice}</span>
@@ -500,14 +500,14 @@ export default function RemesasPage() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<span style={{ fontSize: 22 }}>📦</span>}
-            title="No shipments in this category"
-            description="Shipments will appear here when agents process invoice emails."
+            title="Sin remesas en esta categoría"
+            description="Las remesas aparecen aquí cuando los agentes procesan correos con facturas."
           />
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b" style={{ borderColor: '#E7E5E4', background: '#FAFAF9' }}>
-                <th className="th">Invoice</th>
+                <th className="th">Factura</th>
                 <th className="th">Proveedor</th>
                 <th className="th text-right">Monto</th>
                 <th className="th">Condición</th>

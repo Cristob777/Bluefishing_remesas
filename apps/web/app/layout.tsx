@@ -17,8 +17,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Import Workflow Agents',
-  description: 'AI-powered import operations — invoice intake, customs funds, landed cost, reconciliation.',
+  title: 'Agentes de Importación · Bluefishing',
+  description: 'Operaciones de importación con IA — recepción de facturas, provisión aduanera, costo total y reconciliación.',
   icons: { icon: '/favicon.svg' },
 }
 
