@@ -72,11 +72,32 @@ Returns: { tasa_clp: number, source: "cache"|"CMF", moneda, fecha }
 
 // ── Tool handlers ────────────────────────────────────────────────────────────
 
+// Pre-flight client-side validation. The Postgres run_sql() function also
+// enforces these (defense in depth), but we reject obvious bad input fast
+// and avoid leaking PG error details back to the LLM.
+const ALLOWED_VERBS = /^\s*(SELECT|INSERT|UPDATE|DELETE|WITH)\b/i
+const FORBIDDEN     = /(--|\/\*|\*\/|;\s*\S)|(\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|VACUUM|CLUSTER|REINDEX|COPY|DBLINK)\b)|(\b(PG_CATALOG|INFORMATION_SCHEMA|PG_USER|PG_ROLES|PG_SHADOW|PG_AUTHID)\b)/i
+
 export async function handleSupabaseSQL(input: { sql: string }) {
+  const sql = (input?.sql ?? '').trim()
+  if (!sql)                     return { error: 'Empty SQL', success: false }
+  if (sql.length > 8000)        return { error: 'SQL too long (max 8000 chars)', success: false }
+  if (!ALLOWED_VERBS.test(sql)) return { error: 'Only SELECT/INSERT/UPDATE/DELETE/WITH allowed', success: false }
+  if (FORBIDDEN.test(sql))      return { error: 'Disallowed SQL construct', success: false }
+
   const supabase = getSupabase()
-  const { data, error } = await supabase.rpc('run_sql', { sql_text: input.sql })
-  if (error) return { error: error.message, success: false }
-  return data
+  try {
+    const { data, error } = await supabase.rpc('run_sql', { sql_text: sql })
+    if (error) {
+      // Log full error server-side; return generic to LLM.
+      console.error('[run_sql] rpc error:', error.message, error.code)
+      return { error: 'Query failed', success: false }
+    }
+    return data
+  } catch (err) {
+    console.error('[run_sql] thrown:', err)
+    return { error: 'Query failed', success: false }
+  }
 }
 
 export async function handleGetFxRate(input: { moneda: string; fecha: string }) {
