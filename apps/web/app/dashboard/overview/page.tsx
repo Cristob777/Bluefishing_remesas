@@ -1,11 +1,14 @@
 import { createServerClient } from '@/lib/supabase'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { OnboardingHero } from '@/components/ui/OnboardingHero'
+import { GmailErrorBanner } from '@/components/ui/GmailErrorBanner'
 import { Bot } from 'lucide-react'
 
 function fmtCLP(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n)
 }
+
 function relTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const min  = Math.floor(diff / 60000)
@@ -17,11 +20,12 @@ function relTime(iso: string) {
 }
 
 const AGENT_META: Record<string, { label: string; color: string; bg: string }> = {
-  invoice_intake:     { label: 'Invoice',   color: '#4F46E5', bg: '#EEF2FF' },
-  customs_funds:      { label: 'Customs',   color: '#D97706', bg: '#FFFBEB' },
-  din_reconciliation: { label: 'DIN',       color: '#7C3AED', bg: '#F5F3FF' },
-  landed_cost:        { label: 'L. Cost',   color: '#059669', bg: '#ECFDF5' },
-  manual_action:      { label: 'Manual',    color: '#525252', bg: '#F5F5F4' },
+  invoice_intake:     { label: 'Factura',  color: '#4F46E5', bg: '#EEF2FF' },
+  customs_funds:      { label: 'Aduana',   color: '#D97706', bg: '#FFFBEB' },
+  din_reconciliation: { label: 'DIN',      color: '#7C3AED', bg: '#F5F3FF' },
+  landed_cost:        { label: 'Costo',    color: '#059669', bg: '#ECFDF5' },
+  manual_action:      { label: 'Manual',   color: '#525252', bg: '#F5F5F4' },
+  imap_poller:        { label: 'Gmail',    color: '#525252', bg: '#F5F5F4' },
 }
 
 const ALERTA_ICON: Record<string, string> = {
@@ -31,13 +35,35 @@ const ALERTA_ICON: Record<string, string> = {
   APROBACION_REQUERIDA: '🔒',
 }
 
-// Stars for the galactic hero — deterministic positions
 const STARS = Array.from({ length: 40 }, (_, i) => ({
   x:    ((i * 73 + 17) % 100),
   y:    ((i * 41 + 29) % 100),
   size: i % 5 === 0 ? 2 : i % 3 === 0 ? 1.5 : 1,
   delay: (i * 0.15) % 3,
 }))
+
+interface AgentLogRow {
+  id: string
+  agent_name: string
+  accion: string
+  resultado: string | null
+  created_at: string
+}
+
+// Group consecutive identical agent logs into a single row with count
+function dedupeLogs(logs: AgentLogRow[]) {
+  const out: Array<AgentLogRow & { count: number; first_at: string; last_at: string }> = []
+  for (const log of logs) {
+    const last = out[out.length - 1]
+    if (last && last.agent_name === log.agent_name && last.accion === log.accion && last.resultado === log.resultado) {
+      last.count++
+      last.first_at = log.created_at
+    } else {
+      out.push({ ...log, count: 1, first_at: log.created_at, last_at: log.created_at })
+    }
+  }
+  return out
+}
 
 export default async function OverviewPage() {
   const supabase = createServerClient()
@@ -53,9 +79,11 @@ export default async function OverviewPage() {
     )
   }
 
-  // Fetch all stats concurrently
   const [
     r1, r2, r3, r4,
+    rProv,
+    rPagos,
+    rRemesasAll,
     { data: alertas },
     { data: agentLogs },
     { data: usdExposure },
@@ -65,8 +93,11 @@ export default async function OverviewPage() {
     supabase.from('pagos').select('*', { count: 'exact', head: true }).eq('estado', 'PENDIENTE'),
     supabase.from('provisiones_fondos').select('*', { count: 'exact', head: true }).eq('estado', 'PENDIENTE').lte('fecha_vencimiento', new Date(Date.now() + 3 * 86400000).toISOString()),
     supabase.from('stock_items').select('*', { count: 'exact', head: true }).not('diferencia', 'eq', 0),
+    supabase.from('proveedores').select('*', { count: 'exact', head: true }),
+    supabase.from('pagos').select('*', { count: 'exact', head: true }).eq('estado', 'CONFIRMADO'),
+    supabase.from('remesas').select('*', { count: 'exact', head: true }),
     supabase.from('alertas').select('*').eq('leida', false).order('created_at', { ascending: false }).limit(8),
-    supabase.from('agent_logs').select('*').order('created_at', { ascending: false }).limit(6),
+    supabase.from('agent_logs').select('*').order('created_at', { ascending: false }).limit(20),
     supabase.from('remesas').select('monto_original').eq('moneda_origen', 'USD').not('estado', 'eq', 'RECONCILIADO'),
     supabase.from('remesas').select('monto_original').eq('moneda_origen', 'JPY').not('estado', 'eq', 'RECONCILIADO'),
   ])
@@ -78,8 +109,62 @@ export default async function OverviewPage() {
     diferenciasStock:    r4.count ?? 0,
   }
 
+  // First-run detection — DB is essentially empty
+  const proveedoresCount = rProv.count ?? 0
+  const remesasTotal     = rRemesasAll.count ?? 0
+  const pagosConfirmados = rPagos.count ?? 0
+  const isFirstRun       = proveedoresCount === 0 && remesasTotal === 0
+
+  // Gmail error detection — last imap_poller log is an error
+  const recentLogs   = (agentLogs ?? []) as AgentLogRow[]
+  const lastImapLog  = recentLogs.find(l => l.agent_name === 'imap_poller')
+  const gmailBroken  = lastImapLog?.resultado === 'ERROR'
+  const lastErrorAt  = gmailBroken ? lastImapLog!.created_at : undefined
+
+  // ── First-run: onboarding checklist instead of empty stats ─────────────
+  if (isFirstRun) {
+    const onboardingSteps = [
+      {
+        id: 'gmail',
+        label: 'Conectar Gmail de operaciones',
+        done: !gmailBroken && (pagosConfirmados + remesasTotal) > 0,
+        href: '/api/gmail-auth',
+      },
+      {
+        id: 'suppliers',
+        label: 'Agregar tu primer proveedor',
+        done: proveedoresCount > 0,
+        hint: 'Se crea automáticamente al recibir la primera factura',
+      },
+      {
+        id: 'invoice',
+        label: 'Recibir tu primera factura',
+        done: remesasTotal > 0,
+        hint: 'Reenvía un correo de proveedor al buzón conectado',
+      },
+      {
+        id: 'pago',
+        label: 'Confirmar tu primer pago',
+        done: pagosConfirmados > 0,
+        hint: 'Disponible cuando llegue la primera factura',
+      },
+    ]
+
+    return (
+      <div className="min-h-screen">
+        {gmailBroken && <GmailErrorBanner lastErrorAt={lastErrorAt} />}
+        <OnboardingHero
+          steps={onboardingSteps}
+          companyName={process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'tu empresa'}
+        />
+      </div>
+    )
+  }
+
+  // ── Normal operation: stats + activity ─────────────────────────────────
   const totalUSD = (usdExposure ?? []).reduce((s: number, r: { monto_original: number }) => s + (r.monto_original || 0), 0)
   const totalJPY = (jpyExposure ?? []).reduce((s: number, r: { monto_original: number }) => s + (r.monto_original || 0), 0)
+  const showFxRow = totalUSD > 0 || totalJPY > 0
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -92,12 +177,14 @@ export default async function OverviewPage() {
     { label: 'Stock discrepancies',    value: stats.diferenciasStock,    sub: 'unresolved SKUs',  icon: '📊', accent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', cssAccent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', bg: stats.diferenciasStock > 0 ? '#FFFBEB' : '#ECFDF5' },
   ]
 
+  const dedupedLogs = dedupeLogs(recentLogs).slice(0, 6)
+
   return (
     <div className="min-h-screen">
 
-      {/* ── Galactic hero ── */}
+      {gmailBroken && <GmailErrorBanner lastErrorAt={lastErrorAt} />}
+
       <div className="relative overflow-hidden bg-galactic px-8 pt-10 pb-14">
-        {/* Stars */}
         {STARS.map((s, i) => (
           <span
             key={i}
@@ -111,8 +198,6 @@ export default async function OverviewPage() {
             }}
           />
         ))}
-
-        {/* Nebula overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse 55% 35% at 18% 55%, rgba(139,92,246,.10) 0%, transparent 65%)' }}
@@ -141,7 +226,6 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      {/* ── Stats grid (pulled up, overlapping hero bottom) ── */}
       <div className="px-8 -mt-8 relative z-10">
         <div className="grid grid-cols-4 gap-4 stagger">
           {STAT_CARDS.map(s => (
@@ -168,40 +252,39 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      {/* ── FX Exposure ── */}
-      <div className="px-8 mt-5 grid grid-cols-2 gap-4">
-        {[
-          { flag: '🇺🇸', label: 'USD Exposure', value: `$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, currency: 'USD', iconBg: '#FEF3C7', accent: '#D97706' },
-          { flag: '🇯🇵', label: 'JPY Exposure', value: `¥${totalJPY.toLocaleString('ja-JP')}`, currency: 'JPY', iconBg: '#EEF2FF', accent: '#4F46E5' },
-        ].map(fx => (
-          <div key={fx.currency} className="card p-5 flex items-center gap-4">
-            <div
-              className="flex items-center justify-center w-12 h-12 rounded-xl text-2xl flex-shrink-0"
-              style={{ background: fx.iconBg }}
-            >
-              {fx.flag}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#A3A3A3' }}>{fx.label}</p>
-              <div className="flex items-baseline gap-1.5">
-                <p className="text-2xl font-extrabold mono leading-none" style={{ color: '#0A0A0A' }}>{fx.value}</p>
-                <span
-                  className="text-[11px] font-bold px-1.5 py-0.5 rounded-md"
-                  style={{ background: fx.iconBg, color: fx.accent }}
-                >
-                  {fx.currency}
-                </span>
+      {showFxRow && (
+        <div className="px-8 mt-5 grid grid-cols-2 gap-4">
+          {[
+            { flag: '🇺🇸', label: 'Exposición USD', value: `$${totalUSD.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, currency: 'USD', iconBg: '#FEF3C7', accent: '#D97706', show: totalUSD > 0 },
+            { flag: '🇯🇵', label: 'Exposición JPY', value: `¥${totalJPY.toLocaleString('ja-JP')}`, currency: 'JPY', iconBg: '#EEF2FF', accent: '#4F46E5', show: totalJPY > 0 },
+          ].filter(fx => fx.show).map(fx => (
+            <div key={fx.currency} className="card p-5 flex items-center gap-4">
+              <div
+                className="flex items-center justify-center w-12 h-12 rounded-xl text-2xl flex-shrink-0"
+                style={{ background: fx.iconBg }}
+              >
+                {fx.flag}
               </div>
-              <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>in active shipments</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#A3A3A3' }}>{fx.label}</p>
+                <div className="flex items-baseline gap-1.5">
+                  <p className="text-2xl font-extrabold mono leading-none" style={{ color: '#0A0A0A' }}>{fx.value}</p>
+                  <span
+                    className="text-[11px] font-bold px-1.5 py-0.5 rounded-md"
+                    style={{ background: fx.iconBg, color: fx.accent }}
+                  >
+                    {fx.currency}
+                  </span>
+                </div>
+                <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>en remesas activas</p>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* ── Bottom grid ── */}
       <div className="px-8 mt-6 pb-8 grid grid-cols-5 gap-6">
 
-        {/* Alertas — 3/5 */}
         <div className="col-span-3 card overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
             <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Active alerts</h2>
@@ -251,14 +334,13 @@ export default async function OverviewPage() {
           )}
         </div>
 
-        {/* Agent activity — 2/5 */}
         <div className="col-span-2 card overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
             <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Agent activity</h2>
             <span className="text-[11px]" style={{ color: '#A3A3A3' }}>Latest actions</span>
           </div>
 
-          {!agentLogs?.length ? (
+          {!dedupedLogs.length ? (
             <EmptyState
               icon={<Bot size={20} style={{ color: '#A3A3A3' }} />}
               title="Agents are standing by"
@@ -266,18 +348,16 @@ export default async function OverviewPage() {
             />
           ) : (
             <div>
-              {(agentLogs as Array<{
-                id: string; agent_name: string; accion: string
-                resultado: string | null; created_at: string
-              }>).map((l, i) => {
+              {dedupedLogs.map((l, i) => {
                 const meta   = AGENT_META[l.agent_name] ?? { label: l.agent_name, color: '#525252', bg: '#F5F5F4' }
                 const isDone = l.resultado === 'SUCCESS'
                 const isErr  = l.resultado === 'ERROR'
+                const showCount = l.count > 1
                 return (
                   <div
                     key={l.id}
                     className="flex items-center gap-3 px-5 py-3.5 transition-colors"
-                    style={{ borderBottom: i < agentLogs.length - 1 ? '1px solid #F5F5F4' : 'none' }}
+                    style={{ borderBottom: i < dedupedLogs.length - 1 ? '1px solid #F5F5F4' : 'none' }}
                   >
                     <span
                       className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
@@ -287,9 +367,10 @@ export default async function OverviewPage() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold truncate" style={{ color: '#0A0A0A' }}>
-                        {l.accion.replace(/_/g, ' ')}
+                        {l.accion.replace(/_/g, ' ').toLowerCase()}
+                        {showCount && <span className="ml-1.5 font-mono" style={{ color: '#A3A3A3' }}>×{l.count}</span>}
                       </p>
-                      <p className="text-[10px] mono" style={{ color: '#A3A3A3' }}>{relTime(l.created_at)}</p>
+                      <p className="text-[10px] mono" style={{ color: '#A3A3A3' }}>{relTime(l.last_at)}</p>
                     </div>
                     <span
                       className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
