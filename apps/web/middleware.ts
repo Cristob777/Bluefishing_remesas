@@ -50,37 +50,79 @@ function jwtNotExpired(token: string): boolean {
   }
 }
 
+function tryExtractTokenFromValue(value: string): string | null {
+  try {
+    const decoded = decodeURIComponent(value)
+
+    // Format A: base64-encoded JSON session (newer @supabase/ssr)
+    //   value starts with "base64-" prefix, rest is base64(JSON)
+    if (decoded.startsWith('base64-')) {
+      const b64 = decoded.slice('base64-'.length)
+      const json = Buffer.from(b64, 'base64').toString('utf-8')
+      const parsed = JSON.parse(json)
+      const session = Array.isArray(parsed) ? parsed[0] : parsed
+      return session?.access_token ?? null
+    }
+
+    // Format B: JSON object/array with access_token (classic SSR)
+    if (decoded.startsWith('{') || decoded.startsWith('[')) {
+      const parsed = JSON.parse(decoded)
+      const session = Array.isArray(parsed) ? parsed[0] : parsed
+      return session?.access_token ?? null
+    }
+
+    // Format C: raw JWT (eyJ...)
+    if (decoded.startsWith('eyJ')) return decoded
+
+    return null
+  } catch {
+    return null
+  }
+}
+
 function isAuthenticated(req: NextRequest): boolean {
   const cookieHeader = req.headers.get('cookie') ?? ''
+  if (!cookieHeader) return false
 
-  // Find ALL cookies that look like Supabase auth cookies (any format/version)
-  // @supabase/ssr uses: sb-<ref>-auth-token, sb-<ref>-auth-token.0, etc.
-  const allCookies = cookieHeader.split(';').map(c => c.trim())
+  // Collect all sb-* auth cookies — @supabase/ssr can chunk large tokens
+  // into sb-<ref>-auth-token.0, sb-<ref>-auth-token.1, ... and each piece
+  // is part of a single payload.
+  const authCookies = new Map<string, string>()  // base name → concatenated chunks
+  const chunks      = new Map<string, Map<number, string>>()
 
-  for (const cookie of allCookies) {
-    const eqIdx = cookie.indexOf('=')
+  for (const raw of cookieHeader.split(';')) {
+    const cookie = raw.trim()
+    const eqIdx  = cookie.indexOf('=')
     if (eqIdx === -1) continue
     const name  = cookie.slice(0, eqIdx).trim()
     const value = cookie.slice(eqIdx + 1).trim()
+    if (!value) continue
 
-    // Match any Supabase auth cookie
+    // Only Supabase auth cookies
     if (!/^sb-.+(auth-token|access-token)/.test(name)) continue
 
-    try {
-      const decoded = decodeURIComponent(value)
+    // Chunked: name.0, name.1, ...
+    const chunkMatch = name.match(/^(.+)\.(\d+)$/)
+    if (chunkMatch) {
+      const base = chunkMatch[1]
+      const idx  = Number(chunkMatch[2])
+      if (!chunks.has(base)) chunks.set(base, new Map())
+      chunks.get(base)!.set(idx, value)
+    } else {
+      authCookies.set(name, value)
+    }
+  }
 
-      // Format 1: JSON object with access_token
-      if (decoded.startsWith('{') || decoded.startsWith('[')) {
-        const parsed  = JSON.parse(decoded)
-        const session = Array.isArray(parsed) ? parsed[0] : parsed
-        const token   = session?.access_token
-        if (token && jwtNotExpired(token)) return true
-      }
+  // Stitch chunked cookies in order
+  for (const [base, parts] of chunks) {
+    const ordered = [...parts.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v)
+    authCookies.set(base, ordered.join(''))
+  }
 
-      // Format 2: raw JWT (eyJ...)
-      if (decoded.startsWith('eyJ') && jwtNotExpired(decoded)) return true
-
-    } catch { /* continue to next cookie */ }
+  // Try to extract a valid, non-expired token from any of them
+  for (const value of authCookies.values()) {
+    const token = tryExtractTokenFromValue(value)
+    if (token && jwtNotExpired(token)) return true
   }
 
   return false
