@@ -1,8 +1,4 @@
 {
-  "name": "bluefishing-ai-agents",
-  "buildCommand": "cd apps/web && npm install && npm run build",
-  "outputDirectory": "apps/web/.next",
-  "installCommand": "cd apps/web && npm install",
   "crons": [
     {
       "path": "/api/cron/poll-imap",
