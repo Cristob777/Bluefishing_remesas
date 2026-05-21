@@ -1,11 +1,6 @@
-// Validates required env vars at module load time.
-// Any missing var throws immediately — better a startup crash than a silent wrong role.
-
-function require(key: string): string {
-  const val = process.env[key]
-  if (!val) throw new Error(`Missing required env var: ${key}`)
-  return val
-}
+// Keep config access build-safe: throwing at module load breaks Next.js page-data
+// collection for unrelated routes during deploy. Route-level code should enforce
+// required vars where execution actually depends on them.
 
 function optional(key: string, fallback = ''): string {
   return process.env[key] ?? fallback
@@ -20,12 +15,12 @@ const isServer = typeof window === 'undefined'
 
 export const config = {
   supabase: {
-    url:         isServer ? require('NEXT_PUBLIC_SUPABASE_URL')    : optional('NEXT_PUBLIC_SUPABASE_URL'),
-    anonKey:     isServer ? require('NEXT_PUBLIC_SUPABASE_ANON_KEY') : optional('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-    serviceRole: isServer ? require('SUPABASE_SERVICE_ROLE_KEY')   : '',
+    url:         optional('NEXT_PUBLIC_SUPABASE_URL'),
+    anonKey:     optional('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+    serviceRole: isServer ? optional('SUPABASE_SERVICE_ROLE_KEY')   : '',
   },
   anthropic: {
-    apiKey: isServer ? require('ANTHROPIC_API_KEY') : '',
+    apiKey: isServer ? optional('ANTHROPIC_API_KEY') : '',
   },
   auth: {
     ownerEmails:  list('OWNER_EMAILS'),

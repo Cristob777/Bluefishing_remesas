@@ -41,6 +41,17 @@ const STARS = Array.from({ length: 40 }, (_, i) => ({
 
 export default async function OverviewPage() {
   const supabase = createServerClient()
+  if (!supabase) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <EmptyState
+          icon={<span style={{ fontSize: 22 }}>⚙️</span>}
+          title="Configuration pending"
+          description="Supabase environment variables are not configured yet for this deployment."
+        />
+      </div>
+    )
+  }
 
   // Fetch all stats concurrently
   const [
