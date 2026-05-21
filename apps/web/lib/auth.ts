@@ -25,7 +25,7 @@ const ALLOWED_ORIGINS = new Set([
   ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
 ])
 
-function resolveRole(email: string): UserRole {
+function resolveRoleFromEnv(email: string): UserRole {
   return ROLE_MAP[email.toLowerCase()] ?? 'warehouse'
 }
 
@@ -37,11 +37,40 @@ function supabase() {
   )
 }
 
+// Service-role client used only to read user_roles (bypasses RLS).
+// Never expose this to the caller — it stays inside resolveRoleFromDb.
+function supabaseService() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } },
+  )
+}
+
+// Primary RBAC source: user_roles table. Falls back to env var map if no row.
+async function resolveRole(userId: string, email: string): Promise<UserRole> {
+  try {
+    const { data, error } = await supabaseService()
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (!error && data?.role) {
+      return data.role as UserRole
+    }
+  } catch (err) {
+    console.error('[auth] user_roles lookup failed, falling back to env:', err)
+  }
+  return resolveRoleFromEnv(email)
+}
+
 async function verifyBearer(token: string): Promise<AuthUser | null> {
   const { data, error } = await supabase().auth.getUser(token)
   if (error || !data.user) return null
   const email = data.user.email ?? ''
-  return { id: data.user.id, email, role: resolveRole(email) }
+  const role  = await resolveRole(data.user.id, email)
+  return { id: data.user.id, email, role }
 }
 
 // Cookie auth for requests originating from the browser dashboard
