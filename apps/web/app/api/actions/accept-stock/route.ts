@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod/v4'
 import { withRole, readJsonBody, type AuthUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
+import { safeError } from '@/lib/errors'
 
 const Schema = z.object({
   recepcion_id: z.string().uuid(),
@@ -52,10 +53,12 @@ export const POST = withRole(['warehouse', 'owner', 'finance'], async (req: Next
     if (error) throw error
 
     if (alert_id) {
+      // SECURITY: scope alert update to this recepcion so users can't clear arbitrary alerts.
       await supabase
         .from('alertas')
         .update({ leida: true, leida_at: new Date().toISOString() })
         .eq('id', alert_id)
+        .eq('recepcion_id', recepcion_id)
     }
 
     await supabase.from('agent_logs').insert({
@@ -67,7 +70,6 @@ export const POST = withRole(['warehouse', 'owner', 'finance'], async (req: Next
 
     return NextResponse.json({ success: true, action: `stock_${resolution}` })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return safeError(err, 'accept-stock')
   }
 })

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod/v4'
 import { withRole, readJsonBody, type AuthUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
+import { safeError } from '@/lib/errors'
 
 const Schema = z.object({
   pago_id:       z.string().uuid(),
@@ -58,7 +59,6 @@ export const POST = withRole(['finance', 'owner'], async (req: NextRequest, user
 
     return NextResponse.json({ success: true, action: 'orden_emitida' })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return safeError(err, 'orden-pago')
   }
 })
