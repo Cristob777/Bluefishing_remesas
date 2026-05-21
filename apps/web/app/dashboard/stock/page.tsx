@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import { Package } from 'lucide-react'
@@ -80,17 +81,46 @@ export default function StockPage() {
 
       {loading ? (
         <div className="space-y-4">
-          {[0,1,2].map(i => <div key={i} className="card p-5 space-y-3"><div className="skeleton h-5 w-64 rounded" /><div className="skeleton h-24 rounded-lg" /></div>)}
+          {[0,1,2].map(i => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08, duration: 0.3 }}
+              className="card p-5 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-4 w-40 rounded animate-pulse" style={{ background: '#F5F5F4' }} />
+                  <div className="h-4 w-20 rounded animate-pulse" style={{ background: '#F5F5F4' }} />
+                </div>
+                <div className="h-4 w-24 rounded animate-pulse" style={{ background: '#F5F5F4' }} />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {[0,1,2].map(j => (
+                  <div key={j} className="space-y-2">
+                    <div className="h-3 w-16 rounded animate-pulse" style={{ background: '#F5F5F4' }} />
+                    <div className="h-6 w-12 rounded animate-pulse" style={{ background: '#F5F5F4' }} />
+                  </div>
+                ))}
+              </div>
+              <div className="h-px" style={{ background: '#F5F5F4' }} />
+              <div className="space-y-2">
+                {[0,1,2].map(k => <div key={k} className="h-4 rounded animate-pulse" style={{ background: '#F5F5F4' }} />)}
+              </div>
+            </motion.div>
+          ))}
         </div>
       ) : !recepciones.length ? (
         <EmptyState
           icon={<Package size={20} style={{ color: '#A3A3A3' }} />}
-          title="No stock receipts"
-          description="They will appear here when the warehouse logs incoming goods."
+          title="Sin recepciones de stock"
+          description="Aparecerán aquí cuando bodega registre el ingreso de mercadería."
+          action={{ label: 'Ver remesas activas', href: '/dashboard/remesas' }}
         />
       ) : (
-        <div className="space-y-5 stagger">
-          {recepciones.map(rec => {
+        <div className="space-y-5">
+          {recepciones.map((rec, recIdx) => {
             const items        = (rec.items ?? []) as StockItem[]
             const withDiff     = items.filter(i => (i.diferencia ?? 0) !== 0)
             const pct          = items.length > 0 ? Math.round((items.filter(i => (i.diferencia ?? 0) === 0).length / items.length) * 100) : 100
@@ -99,7 +129,13 @@ export default function StockPage() {
             const hasMore      = items.length > 5
 
             return (
-              <div key={rec.id} className="card overflow-hidden">
+              <motion.div
+                key={rec.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(recIdx * 0.05, 0.25), duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="card overflow-hidden"
+              >
                 {/* Card header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
                   <div className="flex items-center gap-3">
@@ -206,7 +242,7 @@ export default function StockPage() {
                     </span>
                   )}
                 </div>
-              </div>
+              </motion.div>
             )
           })}
         </div>

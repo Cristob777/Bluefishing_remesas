@@ -5,7 +5,9 @@ import { clsx } from 'clsx'
 import { Plus, X, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/TableSkeleton'
 import { createBrowserClient } from '@/lib/supabase'
+import { motion } from 'framer-motion'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -492,22 +494,20 @@ export default function RemesasPage() {
       {/* Table */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-8 space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="skeleton h-10 rounded-lg" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} cols={7} />
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<span style={{ fontSize: 22 }}>📦</span>}
-            title="No shipments in this category"
-            description="Shipments will appear here when agents process invoice emails."
+            title="Sin remesas en esta categoría"
+            description="Las remesas aparecen aquí cuando los agentes procesan correos con facturas."
+            action={filter !== 0 ? { label: 'Ver todas', onClick: () => setFilter(0) } : { label: 'Conectar Gmail', href: '/api/gmail-auth' }}
           />
         ) : (
+          <div className="overflow-auto max-h-[70vh]">
           <table className="w-full">
-            <thead>
-              <tr className="border-b" style={{ borderColor: '#E7E5E4', background: '#FAFAF9' }}>
-                <th className="th">Invoice</th>
+            <thead className="sticky top-0 z-10" style={{ background: '#FAFAF9' }}>
+              <tr className="border-b" style={{ borderColor: '#E7E5E4' }}>
+                <th className="th">Factura</th>
                 <th className="th">Proveedor</th>
                 <th className="th text-right">Monto</th>
                 <th className="th">Condición</th>
@@ -517,11 +517,15 @@ export default function RemesasPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(r => {
+              {filtered.map((r, idx) => {
                 const isUrgent = r.alertas?.some(a => a.urgente && !a.leida)
                 return (
-                  <tr
+                  <motion.tr
                     key={r.id}
+                    layout
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(idx * 0.02, 0.3), duration: 0.25 }}
                     className="table-row cursor-pointer"
                     onClick={() => setSelected(r)}
                     style={isUrgent ? { borderLeft: '2px solid #DC2626', background: 'rgba(254,242,242,0.3)' } : {}}
@@ -565,11 +569,12 @@ export default function RemesasPage() {
                         {r.numero_despacho ?? '—'}
                       </span>
                     </td>
-                  </tr>
+                  </motion.tr>
                 )
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
