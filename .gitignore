@@ -24,6 +24,11 @@ dist/
 CLAUDE.md
 PROJECT.md
 
+# Codex context — contienen datos operacionales internos
+AGENTS.md
+.codex/
+.tmp/
+
 # Vercel
 .vercel
 
