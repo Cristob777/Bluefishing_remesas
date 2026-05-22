@@ -10,11 +10,11 @@ function sb() {
 function relTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const min  = Math.floor(diff / 60000)
-  if (min < 1)  return 'just now'
-  if (min < 60) return `${min}m ago`
+  if (min < 1)  return 'ahora'
+  if (min < 60) return `hace ${min}m`
   const h = Math.floor(min / 60)
-  if (h < 24)   return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
+  if (h < 24)   return `hace ${h}h`
+  return `hace ${Math.floor(h / 24)}d`
 }
 
 export default async function SettingsPage({
@@ -32,132 +32,110 @@ export default async function SettingsPage({
     .order('created_at', { ascending: true })
 
   const errorMessages: Record<string, string> = {
-    no_refresh_token:       'No refresh token received. Revoke access at myaccount.google.com/permissions and try again.',
-    token_exchange_failed:  'Failed to exchange authorization code. Please try again.',
-    db_write_failed:        'Failed to save the token. Please try again.',
-    invalid_state:          'Invalid or expired OAuth session. Please try again.',
-    missing_params:         'Missing authorization parameters from Google. Please try again.',
+    no_refresh_token:       'No se recibió refresh token. Revoca el acceso en myaccount.google.com/permissions e intenta de nuevo.',
+    token_exchange_failed:  'Fallo al canjear el código de autorización. Intenta de nuevo.',
+    db_write_failed:        'Error al guardar el token. Intenta de nuevo.',
+    invalid_state:          'Sesión OAuth inválida o expirada. Intenta de nuevo.',
+    missing_params:         'Parámetros de autorización faltantes desde Google. Intenta de nuevo.',
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '2rem 1.5rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className="max-w-2xl mx-auto px-6 py-8">
 
       {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0A0A0A', margin: 0 }}>Settings</h1>
-        <p style={{ fontSize: '0.8125rem', color: '#A3A3A3', marginTop: '0.25rem' }}>
-          Manage connected Gmail accounts for email processing.
-        </p>
+      <div className="mb-8">
+        <p className="page-eyebrow">Sistema</p>
+        <h1 className="page-title text-xl font-bold">Configuración</h1>
+        <p className="page-subtitle">Administra las cuentas Gmail conectadas para el procesamiento de emails.</p>
       </div>
 
       {/* Status banners */}
       {gmailStatus === 'connected' && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.625rem',
-          padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1.5rem',
-          background: '#ECFDF5', border: '1px solid #A7F3D0',
-        }}>
-          <span style={{ fontSize: '1rem' }}>✅</span>
-          <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#065F46', margin: 0 }}>
-            Gmail account connected successfully. Emails will be processed in the next polling cycle.
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl mb-6 border"
+          style={{ background: 'var(--success-bg)', borderColor: 'var(--success-border)' }}>
+          <span className="text-base">✅</span>
+          <p className="text-sm font-medium m-0" style={{ color: '#065F46' }}>
+            Cuenta Gmail conectada exitosamente. Los emails se procesarán en el próximo ciclo.
           </p>
         </div>
       )}
       {gmailStatus === 'error' && (
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
-          padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1.5rem',
-          background: '#FEF2F2', border: '1px solid #FECACA',
-        }}>
-          <span style={{ fontSize: '1rem' }}>⚠️</span>
+        <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl mb-6 border"
+          style={{ background: 'var(--danger-bg)', borderColor: 'var(--danger-border)' }}>
+          <span className="text-base">⚠️</span>
           <div>
-            <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#991B1B', margin: 0 }}>
-              Gmail connection failed
+            <p className="text-sm font-semibold m-0" style={{ color: '#991B1B' }}>
+              Error al conectar Gmail
             </p>
-            <p style={{ fontSize: '0.8125rem', color: '#B91C1C', margin: '0.25rem 0 0' }}>
-              {errorReason ? (errorMessages[errorReason] ?? errorReason) : 'Please try again.'}
+            <p className="text-sm m-0 mt-1" style={{ color: '#B91C1C' }}>
+              {errorReason ? (errorMessages[errorReason] ?? errorReason) : 'Intenta de nuevo.'}
             </p>
           </div>
         </div>
       )}
 
       {/* Gmail accounts card */}
-      <div style={{ background: '#FFFFFF', border: '1px solid #E7E5E4', borderRadius: '12px', overflow: 'hidden' }}>
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #F5F5F4', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '1rem' }}>📬</span>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0A0A0A' }}>Gmail Accounts</span>
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div className="flex items-center gap-2">
+            <span className="text-base">📬</span>
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cuentas Gmail</span>
             {accounts && accounts.length > 0 && (
-              <span style={{ fontSize: '0.6875rem', fontWeight: 600, background: '#ECFDF5', color: '#065F46', padding: '0.125rem 0.5rem', borderRadius: '999px' }}>
-                {accounts.length} connected
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: 'var(--success-bg)', color: '#065F46' }}>
+                {accounts.length} conectada{accounts.length !== 1 ? 's' : ''}
               </span>
             )}
           </div>
           <a
             href="/api/gmail-auth"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-              padding: '0.4375rem 0.875rem', borderRadius: '8px',
-              background: '#4F46E5', color: '#FFFFFF',
-              fontSize: '0.8125rem', fontWeight: 500, textDecoration: 'none',
-            }}
+            className="btn-primary text-[13px] px-3.5 py-2"
           >
-            <span>+</span> Connect Gmail
+            + Conectar Gmail
           </a>
         </div>
 
         {!accounts || accounts.length === 0 ? (
-          <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📭</div>
-            <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#525252', margin: 0 }}>No Gmail accounts connected yet</p>
-            <p style={{ fontSize: '0.8125rem', color: '#A3A3A3', marginTop: '0.25rem' }}>
-              Click &ldquo;Connect Gmail&rdquo; to authorize your inbox for email processing.
+          <div className="py-10 px-6 text-center">
+            <div className="text-3xl mb-3">📭</div>
+            <p className="text-sm font-medium m-0" style={{ color: 'var(--text-secondary)' }}>
+              Sin cuentas Gmail conectadas
+            </p>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
+              Haz clic en &ldquo;Conectar Gmail&rdquo; para autorizar tu bandeja de entrada.
             </p>
           </div>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul className="list-none m-0 p-0">
             {accounts.map((acct, idx) => (
-              <li key={acct.id} style={{
-                display: 'flex', alignItems: 'center', gap: '0.875rem',
-                padding: '0.875rem 1.25rem',
-                borderTop: idx > 0 ? '1px solid #F5F5F4' : 'none',
-              }}>
+              <li key={acct.id} className="flex items-center gap-3.5 px-5 py-3.5"
+                style={{ borderTop: idx > 0 ? '1px solid var(--border)' : 'none' }}>
                 {/* Avatar */}
-                <div style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.9375rem', flexShrink: 0,
-                }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-[15px] flex-shrink-0"
+                  style={{ background: 'var(--accent-bg)' }}>
                   📧
                 </div>
                 {/* Details */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0A0A0A', margin: 0 }}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold m-0 truncate" style={{ color: 'var(--text-primary)' }}>
                     {acct.email ?? acct.account_label}
                   </p>
-                  <p style={{ fontSize: '0.75rem', color: '#A3A3A3', margin: '0.125rem 0 0' }}>
-                    Label: <span style={{ fontFamily: 'monospace', color: '#737373' }}>{acct.account_label}</span>
-                    {' · '}Connected {relTime(acct.updated_at ?? acct.created_at)}
+                  <p className="text-xs mt-0.5 m-0" style={{ color: 'var(--text-tertiary)' }}>
+                    Label: <span className="mono" style={{ color: '#737373' }}>{acct.account_label}</span>
+                    {' · '}Conectado {relTime(acct.updated_at ?? acct.created_at)}
                   </p>
                 </div>
                 {/* Status badge */}
-                <span style={{
-                  fontSize: '0.6875rem', fontWeight: 600,
-                  background: '#ECFDF5', color: '#065F46',
-                  padding: '0.1875rem 0.5rem', borderRadius: '999px', flexShrink: 0,
-                }}>
-                  Active
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={{ background: 'var(--success-bg)', color: '#065F46' }}>
+                  Activo
                 </span>
                 {/* Reconnect */}
                 <a
                   href={`/api/gmail-auth?account=${encodeURIComponent(acct.account_label)}`}
-                  style={{
-                    fontSize: '0.75rem', color: '#6B7280', textDecoration: 'none',
-                    padding: '0.25rem 0.5rem', borderRadius: '6px',
-                    border: '1px solid #E5E7EB', flexShrink: 0,
-                  }}
+                  className="btn-secondary text-xs px-2 py-1 flex-shrink-0"
                 >
-                  Reconnect
+                  Reconectar
                 </a>
               </li>
             ))}
@@ -166,13 +144,13 @@ export default async function SettingsPage({
       </div>
 
       {/* Help note */}
-      <p style={{ fontSize: '0.75rem', color: '#A3A3A3', marginTop: '1rem', lineHeight: 1.6 }}>
-        Each person (Sebastian, Hector) can connect their own inbox, or use a shared ops inbox.
-        Gmail filters can be set up at{' '}
-        <a href="/api/setup/gmail-filters" style={{ color: '#4F46E5', textDecoration: 'none' }}>
+      <p className="text-xs mt-4 leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
+        Cada persona (Sebastian, Hector) puede conectar su propia bandeja, o usar una bandeja de ops compartida.
+        Los filtros de Gmail se pueden configurar en{' '}
+        <a href="/api/setup/gmail-filters" className="hover:underline" style={{ color: 'var(--accent)' }}>
           /api/setup/gmail-filters
         </a>{' '}
-        to forward supplier and customs emails automatically.
+        para reenviar automáticamente emails de proveedores y aduana.
       </p>
     </div>
   )

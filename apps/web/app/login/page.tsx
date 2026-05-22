@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { LoginButton } from '@/components/ui/LoginButton'
 
 async function signIn(formData: FormData) {
   'use server'
@@ -44,79 +45,57 @@ export default async function LoginPage({
   const hasErr = params.error === 'invalid'
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#FAFAF9',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '1rem',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '360px',
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E7E5E4',
-        borderRadius: '16px',
-        padding: '2rem',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-      }}>
-        <div style={{ marginBottom: '1.75rem', textAlign: 'center' }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: '12px',
-            background: '#4F46E5',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 1rem', fontSize: 22,
-          }}>🎣</div>
-          <h1 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#0A0A0A', margin: 0 }}>
+    <div className="min-h-screen flex items-center justify-center p-4"
+      style={{ background: 'var(--bg-primary)' }}>
+      <div className="w-full max-w-sm bg-white border rounded-2xl p-8"
+        style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+
+        {/* Logo + title */}
+        <div className="mb-7 text-center">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mx-auto mb-4"
+            style={{ background: 'var(--accent)' }}>
+            🎣
+          </div>
+          <h1 className="text-lg font-semibold m-0" style={{ color: 'var(--text-primary)' }}>
             Agentes de Importación
           </h1>
-          <p style={{ fontSize: '0.8125rem', color: '#A3A3A3', marginTop: '0.25rem' }}>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--text-tertiary)' }}>
             Inicia sesión en tu cuenta
           </p>
         </div>
 
-        <form action={signIn} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+        <form action={signIn} className="flex flex-col gap-3.5">
           <input type="hidden" name="next" value={next} />
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#525252', marginBottom: '0.375rem' }}>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               Correo electrónico
             </label>
-            <input type="email" name="email" required autoComplete="email"
+            <input
+              type="email" name="email" required autoComplete="email"
               placeholder="tu@email.com"
-              style={{ width: '100%', padding: '0.5rem 0.75rem', fontSize: '0.875rem',
-                backgroundColor: '#FAFAF9', border: '1px solid #E7E5E4', borderRadius: '8px',
-                color: '#0A0A0A', outline: 'none', boxSizing: 'border-box' }}
+              className="input"
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#525252', marginBottom: '0.375rem' }}>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               Contraseña
             </label>
-            <input type="password" name="password" required autoComplete="current-password"
+            <input
+              type="password" name="password" required autoComplete="current-password"
               placeholder="••••••••"
-              style={{ width: '100%', padding: '0.5rem 0.75rem', fontSize: '0.875rem',
-                backgroundColor: '#FAFAF9', border: '1px solid #E7E5E4', borderRadius: '8px',
-                color: '#0A0A0A', outline: 'none', boxSizing: 'border-box' }}
+              className="input"
             />
           </div>
 
           {hasErr && (
-            <p style={{ fontSize: '0.8125rem', color: '#DC2626', margin: 0 }}>
+            <p className="text-[13px] m-0" style={{ color: 'var(--danger)' }}>
               Correo o contraseña inválidos
             </p>
           )}
 
-          <button type="submit" style={{
-            marginTop: '0.25rem', width: '100%', padding: '0.625rem',
-            background: '#4F46E5', color: '#FFFFFF', border: 'none',
-            borderRadius: '8px', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer',
-          }}>
-            Iniciar sesión
-          </button>
+          <LoginButton />
         </form>
       </div>
     </div>

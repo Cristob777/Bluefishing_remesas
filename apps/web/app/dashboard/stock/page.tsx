@@ -187,7 +187,7 @@ export default function StockPage() {
                 {items.length > 0 && (
                   <table className="w-full text-[12px]">
                     <thead>
-                      <tr style={{ background: '#FAFAF9', borderBottom: '1px solid #E7E5E4' }}>
+                      <tr style={{ background: '#FAFAF9', borderBottom: '1px solid #E7E5E4', position: 'sticky', top: 0, zIndex: 10 }}>
                         <th className="th">SKU</th>
                         <th className="th">Descripción</th>
                         <th className="th text-right">Fact.</th>
