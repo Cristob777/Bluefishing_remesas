@@ -20,10 +20,10 @@ function relTime(iso: string) {
 }
 
 const AGENT_META: Record<string, { label: string; color: string; bg: string }> = {
-  invoice_intake:     { label: 'Factura',  color: '#4F46E5', bg: '#EEF2FF' },
-  customs_funds:      { label: 'Aduana',   color: '#D97706', bg: '#FFFBEB' },
+  invoice_intake:     { label: 'Invoice',  color: '#4F46E5', bg: '#EEF2FF' },
+  customs_funds:      { label: 'Customs',  color: '#D97706', bg: '#FFFBEB' },
   din_reconciliation: { label: 'DIN',      color: '#7C3AED', bg: '#F5F3FF' },
-  landed_cost:        { label: 'Costo',    color: '#059669', bg: '#ECFDF5' },
+  landed_cost:        { label: 'L. Cost',  color: '#059669', bg: '#ECFDF5' },
   manual_action:      { label: 'Manual',   color: '#525252', bg: '#F5F5F4' },
   imap_poller:        { label: 'Gmail',    color: '#525252', bg: '#F5F5F4' },
 }
@@ -126,27 +126,27 @@ export default async function OverviewPage() {
     const onboardingSteps = [
       {
         id: 'gmail',
-        label: 'Conectar Gmail de operaciones',
+        label: 'Connect operations Gmail',
         done: !gmailBroken && (pagosConfirmados + remesasTotal) > 0,
         href: '/api/gmail-auth',
       },
       {
         id: 'suppliers',
-        label: 'Agregar tu primer proveedor',
+        label: 'Add your first supplier',
         done: proveedoresCount > 0,
-        hint: 'Se crea automáticamente al recibir la primera factura',
+        hint: 'Auto-created on first invoice',
       },
       {
         id: 'invoice',
-        label: 'Recibir tu primera factura',
+        label: 'Receive your first invoice',
         done: remesasTotal > 0,
-        hint: 'Reenvía un correo de proveedor al buzón conectado',
+        hint: 'Forward a supplier email to the connected inbox',
       },
       {
         id: 'pago',
-        label: 'Confirmar tu primer pago',
+        label: 'Confirm your first payment',
         done: pagosConfirmados > 0,
-        hint: 'Disponible cuando llegue la primera factura',
+        hint: 'Available once the first invoice arrives',
       },
     ]
 
@@ -155,7 +155,7 @@ export default async function OverviewPage() {
         {gmailBroken && <GmailErrorBanner lastErrorAt={lastErrorAt} />}
         <OnboardingHero
           steps={onboardingSteps}
-          companyName={process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'tu empresa'}
+          companyName={process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'your business'}
         />
       </div>
     )
@@ -255,8 +255,8 @@ export default async function OverviewPage() {
       {showFxRow && (
         <div className="px-8 mt-5 grid grid-cols-2 gap-4">
           {[
-            { flag: '🇺🇸', label: 'Exposición USD', value: `$${totalUSD.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, currency: 'USD', iconBg: '#FEF3C7', accent: '#D97706', show: totalUSD > 0 },
-            { flag: '🇯🇵', label: 'Exposición JPY', value: `¥${totalJPY.toLocaleString('ja-JP')}`, currency: 'JPY', iconBg: '#EEF2FF', accent: '#4F46E5', show: totalJPY > 0 },
+            { flag: '🇺🇸', label: 'USD Exposure', value: `$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, currency: 'USD', iconBg: '#FEF3C7', accent: '#D97706', show: totalUSD > 0 },
+            { flag: '🇯🇵', label: 'JPY Exposure', value: `¥${totalJPY.toLocaleString('ja-JP')}`, currency: 'JPY', iconBg: '#EEF2FF', accent: '#4F46E5', show: totalJPY > 0 },
           ].filter(fx => fx.show).map(fx => (
             <div key={fx.currency} className="card p-5 flex items-center gap-4">
               <div
@@ -276,7 +276,7 @@ export default async function OverviewPage() {
                     {fx.currency}
                   </span>
                 </div>
-                <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>en remesas activas</p>
+                <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>in active shipments</p>
               </div>
             </div>
           ))}
@@ -289,7 +289,7 @@ export default async function OverviewPage() {
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
             <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Active alerts</h2>
             {alertas && alertas.length > 0 && (
-              <Badge variant="urgent">{alertas.length} pendientes</Badge>
+              <Badge variant="urgent">{alertas.length} pending</Badge>
             )}
           </div>
 
