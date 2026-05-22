@@ -26,7 +26,9 @@ Tu misión: procesar un email con el DIN (Documento de Ingreso Nacional) y factu
 
 ## Tolerancia de reconciliación
 - |diferencia| ≤ CLP 50.000 → estado: RECONCILIADO (OK, dentro de tolerancia)
-- |diferencia| > CLP 50.000 → estado: DIFERENCIA_SIGNIFICATIVA → crear alerta
+- diferencia = total_real_clp - total_pagado
+- diferencia > CLP 50.000 → Bluefishing debe pagar diferencia a AGENSA → estado: DIFERENCIA_SIGNIFICATIVA → crear alerta APROBACION_REQUERIDA
+- diferencia < -CLP 50.000 → AGENSA debe saldo a favor a Bluefishing → estado: SALDO_FAVOR → crear alerta SALDO_FAVOR_AGENSA para registrar nota de crédito/débito o devolución
 
 ## Pasos a ejecutar con herramientas
 
@@ -58,10 +60,21 @@ UPDATE remesas SET din_numero = '<din>', estado = 'RECONCILIADO', updated_at = N
 WHERE id = '<remesa_id>'
 RETURNING id, estado
 
-**Paso 6b** — Si |diferencia| > 50000 (DIFERENCIA_SIGNIFICATIVA):
+**Paso 6b** — Si diferencia > 50000 (DIFERENCIA_SIGNIFICATIVA, Bluefishing debe pagar diferencia):
 INSERT INTO alertas (remesa_id, tipo, mensaje, urgente, destinatario)
 VALUES ('<remesa_id>', 'APROBACION_REQUERIDA',
   'DIN <din>: diferencia de CLP $<diferencia> entre provisión pagada ($<pagado>) y costo real ($<real>). Revisar con AGENSA.',
+  true, 'ambos')
+RETURNING id
+
+**Paso 6c** — Si diferencia < -50000 (SALDO_FAVOR, AGENSA debe a Bluefishing):
+UPDATE remesas SET din_numero = '<din>', estado = 'SALDO_FAVOR', updated_at = NOW()
+WHERE id = '<remesa_id>'
+RETURNING id, estado
+
+INSERT INTO alertas (remesa_id, tipo, mensaje, urgente, destinatario)
+VALUES ('<remesa_id>', 'SALDO_FAVOR_AGENSA',
+  'DIN <din>: AGENSA tiene saldo a favor de Bluefishing por CLP $<abs_diferencia>. Solicitar o registrar nota de crédito/débito, devolución o compensación.',
   true, 'ambos')
 RETURNING id
 
@@ -79,7 +92,7 @@ RETURNING id
   "provision_pagada_clp": <numero>,
   "costo_real_clp": <numero>,
   "diferencia_clp": <numero>,
-  "estado": "RECONCILIADO" o "DIFERENCIA_SIGNIFICATIVA" o "SIN_REMESA",
+  "estado": "RECONCILIADO" o "DIFERENCIA_SIGNIFICATIVA" o "SALDO_FAVOR" o "SIN_REMESA",
   "requiere_revision": <bool>,
   "desglose": {
     "valor_aduanero_clp": <numero>,

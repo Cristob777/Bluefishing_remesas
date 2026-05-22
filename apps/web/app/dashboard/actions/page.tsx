@@ -13,6 +13,7 @@ import {
   type ReclamoProveedorAction,
   type VincularDespachoAction,
   type AprobarOperacionAction,
+  type RegistrarNotaAgensaAction,
   type ArchivarExpedienteAction,
 } from '@/types/actions'
 
@@ -39,6 +40,7 @@ const META: Record<string, { icon: string; iconBg: string; color: string; border
   RECLAMO_PROVEEDOR:     { icon: '⚠️', iconBg: '#FFFBEB', color: '#B45309', border: '#FDE68A', label: 'Reclamo a proveedor', stage: 'IV'  },
   VINCULAR_DESPACHO:     { icon: '🔗', iconBg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE', label: 'Vincular despacho',   stage: 'I-II'},
   APROBAR_OPERACION:     { icon: '🔒', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Aprobación ≥5M CLP',  stage: 'V'   },
+  REGISTRAR_NOTA_AGENSA: { icon: '🧾', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Nota AGENSA',         stage: 'V'   },
   ARCHIVAR_EXPEDIENTE:   { icon: '🗄️', iconBg: '#F9FAFB', color: '#374151', border: '#D1D5DB', label: 'Archivar expediente',stage: 'V'  },
 }
 
@@ -545,6 +547,130 @@ function AprobarOperacionForm({ action, onSubmit }: { action: AprobarOperacionAc
   )
 }
 
+// ── Form 10: Nota débito/crédito AGENSA ──────────────────────────────────────
+
+function RegistrarNotaAgensaForm({ action, onSubmit }: { action: RegistrarNotaAgensaAction; onSubmit: (d: unknown) => void }) {
+  const [tipoNota, setTipoNota] = useState<'NOTA_CREDITO' | 'NOTA_DEBITO'>('NOTA_CREDITO')
+  const [numeroNota, setNumeroNota] = useState('')
+  const [montoClp, setMontoClp] = useState(action.saldo_favor_clp || '')
+  const [fechaEmision, setFechaEmision] = useState(todayStr())
+  const [modalidad, setModalidad] = useState<'DEVOLUCION' | 'CREDITO_PROXIMA_PROVISION' | 'COMPENSACION' | 'OTRO'>('CREDITO_PROXIMA_PROVISION')
+  const [notas, setNotas] = useState('')
+
+  const provision = action.provision_pagada_clp
+  const costo = action.costo_real_clp
+  const saldo = action.saldo_favor_clp || Math.max(provision - costo, 0)
+  const amount = Number(montoClp)
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #FDBA74' }}>
+        <div className="px-4 py-3" style={{ background: '#FFF7ED', borderBottom: '1px solid #FDBA74' }}>
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#C2410C' }}>
+            Excedente AGENSA a favor de Bluefishing
+          </p>
+          <p className="text-xs mt-1" style={{ color: '#7C2D12' }}>
+            Registra la nota de crédito/débito o devolución para dejar la remesa lista para archivo.
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 px-4 py-3" style={{ background: '#F9FAFB' }}>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Provisión pagada</p><p className="text-sm font-bold mono" style={{ color: '#374151' }}>{fmtCLP(provision)}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Costo DIN</p><p className="text-sm font-bold mono" style={{ color: '#374151' }}>{fmtCLP(costo)}</p></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#9CA3AF' }}>Saldo a favor</p><p className="text-sm font-bold mono" style={{ color: '#C2410C' }}>{fmtCLP(saldo)}</p></div>
+        </div>
+      </div>
+
+      <DetailRow items={[
+        { label: 'Proveedor', value: action.proveedor },
+        { label: 'Factura', value: action.invoice },
+        { label: 'Despacho', value: action.numero_despacho, highlight: true },
+        { label: 'DIN', value: action.din_numero ?? '—' },
+      ]} />
+
+      {action.mensaje_alerta && (
+        <div className="rounded-xl p-3" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+          <p className="text-xs leading-relaxed" style={{ color: '#92400E' }}>{action.mensaje_alerta}</p>
+        </div>
+      )}
+
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#374151' }}>Tipo de documento</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { value: 'NOTA_CREDITO' as const, label: 'Nota de crédito', hint: 'AGENSA reconoce saldo a favor' },
+            { value: 'NOTA_DEBITO' as const, label: 'Nota de débito', hint: 'Ajuste/cargo documentado por AGENSA' },
+          ].map(opt => (
+            <button key={opt.value} onClick={() => setTipoNota(opt.value)}
+              className="text-left rounded-xl px-4 py-3 transition-all active:scale-[0.99]"
+              style={tipoNota === opt.value
+                ? { background: '#FFF7ED', color: '#C2410C', border: '2px solid #FDBA74' }
+                : { background: '#FFF', color: '#374151', border: '2px solid #E5E7EB' }}>
+              <span className="block text-sm font-bold">{opt.label}</span>
+              <span className="block text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>{opt.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>N° nota</label>
+          <input type="text" value={numeroNota} onChange={e => setNumeroNota(e.target.value)} placeholder="Ej: NC-260041"
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border font-mono focus:outline-none"
+            style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Monto CLP</label>
+          <input type="number" min={1} value={montoClp} onChange={e => setMontoClp(e.target.value === '' ? '' : Number(e.target.value))}
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border font-mono focus:outline-none"
+            style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+        </div>
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Fecha emisión</label>
+          <input type="date" value={fechaEmision} onChange={e => setFechaEmision(e.target.value)}
+            className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none"
+            style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Tratamiento del saldo</label>
+        <select value={modalidad} onChange={e => setModalidad(e.target.value as typeof modalidad)}
+          className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border focus:outline-none"
+          style={{ borderColor: '#D1D5DB', color: '#111827', background: '#FFF' }}>
+          <option value="CREDITO_PROXIMA_PROVISION">Crédito para próxima provisión</option>
+          <option value="DEVOLUCION">Devolución bancaria</option>
+          <option value="COMPENSACION">Compensación contra otro despacho</option>
+          <option value="OTRO">Otro</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#374151' }}>Notas contables</label>
+        <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} placeholder="Referencia de devolución, despacho compensado o comentario de Finanzas..."
+          className="mt-1.5 w-full px-3 py-2.5 rounded-xl text-sm border resize-none focus:outline-none"
+          style={{ borderColor: '#D1D5DB', color: '#111827' }} />
+      </div>
+
+      <button onClick={() => onSubmit({
+        remesa_id: action.remesa_id,
+        alert_id: action.alert_id,
+        tipo_nota: tipoNota,
+        numero_nota: numeroNota,
+        monto_clp: amount,
+        fecha_emision: fechaEmision,
+        modalidad,
+        notas,
+      })}
+        disabled={!numeroNota.trim() || !fechaEmision || !amount || amount <= 0}
+        className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ background: numeroNota.trim() && amount > 0 ? 'linear-gradient(135deg, #C2410C, #9A3412)' : '#9CA3AF' }}>
+        Registrar nota y reconciliar →
+      </button>
+    </div>
+  )
+}
+
 // ── Form 9: Archivar expediente ───────────────────────────────────────────────
 
 function ArchivarExpedienteForm({ action, onSubmit }: { action: ArchivarExpedienteAction; onSubmit: (d: unknown) => void }) {
@@ -685,6 +811,7 @@ export default function ActionsPage() {
       case 'RECLAMO_PROVEEDOR':     return <ReclamoProveedorForm       action={action} onSubmit={w('/api/actions/reclamo-proveedor')} />
       case 'VINCULAR_DESPACHO':     return <VincularDespachoForm       action={action} onSubmit={w('/api/actions/vincular-despacho')} />
       case 'APROBAR_OPERACION':     return <AprobarOperacionForm       action={action} onSubmit={w('/api/actions/approve-payment')} />
+      case 'REGISTRAR_NOTA_AGENSA': return <RegistrarNotaAgensaForm    action={action} onSubmit={w('/api/actions/nota-agensa')} />
       case 'ARCHIVAR_EXPEDIENTE':   return <ArchivarExpedienteForm     action={action} onSubmit={w('/api/actions/archivar-expediente')} />
     }
   }
@@ -712,7 +839,7 @@ export default function ActionsPage() {
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Operaciones</p>
           <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Centro de Acciones</h1>
-          <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>Ventanilla de decisión humana · 9 flujos cubiertos</p>
+          <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>Ventanilla de decisión humana · 10 flujos cubiertos</p>
         </div>
         <div className="flex items-center gap-2">
           <span

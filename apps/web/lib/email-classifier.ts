@@ -11,10 +11,10 @@ Clasifica el email en UNA de estas categorías:
 - INSTRUCCION_PAGO     → ${ownerName} instruye a ${financeName} cuánto pagar y a quién
 - PROVISION_FONDOS     → ${customsAgency} solicita fondos/provisión para despacho aduanero
 - DIN_DESPACHO         → llegó DIN o factura de agencia de aduana post-despacho
-- NOTA_DEBITO_AGENSA   → ${customsAgency} emite nota de débito por saldo a favor (provisión pagada > costo real del despacho)
+- NOTA_DEBITO_AGENSA   → ${customsAgency} emite nota de débito/crédito o informa saldo a favor (provisión pagada > costo real del despacho)
 - UNKNOWN              → ninguna categoría anterior
 
-Señales clave para NOTA_DEBITO_AGENSA: palabras como "nota de débito", "saldo a favor", "devolución", "reembolso", "diferencia a su favor", monto menor al solicitado originalmente.
+Señales clave para NOTA_DEBITO_AGENSA: palabras como "nota de crédito", "nota de débito", "saldo a favor", "devolución", "reembolso", "diferencia a su favor", "abono", monto menor al solicitado originalmente.
 
 Responde SOLO con JSON válido (sin markdown):
 {

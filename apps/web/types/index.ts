@@ -13,7 +13,7 @@ export type RemesaEstado =
 
 export type PagoEstado = 'PENDIENTE' | 'EMITIDO' | 'CONFIRMADO'
 export type PagoTipo = 'ANTICIPO' | 'SALDO' | 'UNICO'
-export type DocumentoTipo = 'INVOICE' | 'DIN' | 'FACTURA_AGENSA' | 'PROVISION' | 'NOTA_DEBITO' | 'OTRO'
+export type DocumentoTipo = 'INVOICE' | 'DIN' | 'FACTURA_AGENSA' | 'PROVISION' | 'NOTA_DEBITO' | 'NOTA_CREDITO' | 'OTRO'
 export type AlertaTipo =
   | 'PROVISION_URGENTE'
   | 'PAGO_PENDIENTE'
@@ -33,7 +33,7 @@ export type EmailCategory =
   | 'INSTRUCCION_PAGO'
   | 'PROVISION_FONDOS'
   | 'DIN_DESPACHO'
-  | 'NOTA_DEBITO_AGENSA'  // AGENSA devuelve saldo a favor por provisión > costo real
+  | 'NOTA_DEBITO_AGENSA'  // AGENSA devuelve/abona saldo a favor por provisión > costo real
   | 'UNKNOWN'
 
 export interface Proveedor {

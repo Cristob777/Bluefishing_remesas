@@ -33,6 +33,7 @@ const ALERTA_ICON: Record<string, string> = {
   PAGO_PENDIENTE:       '💳',
   DIFERENCIA_STOCK:     '📦',
   APROBACION_REQUERIDA: '🔒',
+  SALDO_FAVOR_AGENSA:   '🧾',
 }
 
 const STARS = Array.from({ length: 40 }, (_, i) => ({

@@ -1,5 +1,5 @@
 -- 006_nota_debito.sql
--- Agrega soporte para nota de débito AGENSA (saldo a favor por provisión > costo real)
+-- Agrega soporte para nota de débito/crédito AGENSA (saldo a favor por provisión > costo real)
 
 -- Nuevo tipo de documento
 ALTER TABLE documentos
@@ -9,7 +9,7 @@ ALTER TABLE documentos
 COMMENT ON COLUMN remesas.estado IS
   'INVOICE_RECIBIDO → PAGO_PENDIENTE → PAGO_PARCIAL → PAGO_COMPLETO
    → EN_ADUANA → PROVISION_RECIBIDA → MERCADERIA_RECIBIDA
-   → RECONCILIADO | SALDO_FAVOR → (cierre tras nota de débito)';
+   → RECONCILIADO | SALDO_FAVOR → (cierre tras nota de débito/crédito)';
 
 -- Campos en provisiones_fondos para registrar nota de débito
 ALTER TABLE provisiones_fondos

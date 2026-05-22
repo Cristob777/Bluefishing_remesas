@@ -84,6 +84,7 @@ export const ESTADO_LABELS: Record<string, string> = {
   PROVISION_RECIBIDA:  'Provisión recibida',
   MERCADERIA_RECIBIDA: 'Mercadería recibida',
   RECONCILIADO:        'Reconciliado',
+  SALDO_FAVOR:         'Saldo a favor AGENSA',
 }
 
 export const ESTADO_COLORS: Record<string, { bg: string; color: string; border: string }> = {
@@ -95,4 +96,5 @@ export const ESTADO_COLORS: Record<string, { bg: string; color: string; border: 
   PROVISION_RECIBIDA:  { bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
   MERCADERIA_RECIBIDA: { bg: '#ECFEFF', color: '#0E7490', border: '#A5F3FC' },
   RECONCILIADO:        { bg: '#F0FDF4', color: '#15803D', border: '#BBF7D0' },
+  SALDO_FAVOR:         { bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
 }

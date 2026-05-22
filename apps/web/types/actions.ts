@@ -1,4 +1,4 @@
-// TypeScript interfaces for the 9 workflow action types
+// TypeScript interfaces for workflow action types
 
 export interface InstruccionPagoAction {
   id: string; type: 'INSTRUCCION_PAGO'
@@ -70,6 +70,20 @@ export interface AprobarOperacionAction {
   urgente: boolean; created_at: string
 }
 
+export interface RegistrarNotaAgensaAction {
+  id: string; type: 'REGISTRAR_NOTA_AGENSA'
+  title: string; description: string
+  invoice: string; remesa_id: string; proveedor: string
+  alert_id?: string
+  numero_despacho: string
+  din_numero: string | null
+  provision_pagada_clp: number
+  costo_real_clp: number
+  saldo_favor_clp: number
+  mensaje_alerta?: string
+  urgente: boolean; created_at: string
+}
+
 export interface ArchivarExpedienteAction {
   id: string; type: 'ARCHIVAR_EXPEDIENTE'
   title: string; description: string
@@ -87,4 +101,5 @@ export type PendingAction =
   | ReclamoProveedorAction
   | VincularDespachoAction
   | AprobarOperacionAction
+  | RegistrarNotaAgensaAction
   | ArchivarExpedienteAction

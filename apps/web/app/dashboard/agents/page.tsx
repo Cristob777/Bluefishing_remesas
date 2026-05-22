@@ -10,10 +10,11 @@ const AGENT_META: Record<string, { label: string; icon: string; color: string; b
   invoice_intake:     { label: 'Recepción de Facturas', icon: '📄', color: '#4F46E5', bg: '#EEF2FF', border: '#C7D2FE' },
   customs_funds:      { label: 'Fondos de Aduana',       icon: '🏛️', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
   din_reconciliation: { label: 'Reconciliación DIN',     icon: '📋', color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  nota_debito:        { label: 'Notas AGENSA',           icon: '🧾', color: '#C2410C', bg: '#FFF7ED', border: '#FED7AA' },
   landed_cost:        { label: 'Costo Total',            icon: '💰', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
 }
 
-const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'landed_cost']
+const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'nota_debito', 'landed_cost']
 
 const STARS = Array.from({ length: 28 }, (_, i) => ({
   x: ((i * 67 + 13) % 100), y: ((i * 43 + 31) % 100),
@@ -150,13 +151,13 @@ export default function AgentsPage() {
         <div className="relative">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Sistema</p>
           <h1 className="text-4xl font-bold text-white">Agentes</h1>
-          <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>4 agentes Claude activos · actividad en tiempo real</p>
+          <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>5 agentes Claude activos · actividad en tiempo real</p>
         </div>
       </div>
 
       {/* Agent cards */}
       <div className="px-8 -mt-6 relative z-10">
-        <div className="grid grid-cols-4 gap-4 stagger">
+        <div className="grid grid-cols-5 gap-4 stagger">
           {AGENTS.map(agent => {
             const meta  = AGENT_META[agent] ?? { label: agent, icon: '🤖', color: '#525252', bg: '#F5F5F4', border: '#E7E5E4' }
             const stats = counts[agent] ?? { success: 0, error: 0 }

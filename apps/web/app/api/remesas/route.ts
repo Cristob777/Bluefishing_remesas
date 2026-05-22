@@ -42,7 +42,7 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
     .limit(limit)
 
   // Only allow known estado values to prevent injection
-  const VALID_ESTADOS = ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_COMPLETO','EN_ADUANA','RECIBIDO','RECONCILIADO']
+  const VALID_ESTADOS = ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL','PAGO_COMPLETO','EN_ADUANA','PROVISION_RECIBIDA','MERCADERIA_RECIBIDA','RECIBIDO','RECONCILIADO','SALDO_FAVOR']
   if (estado && VALID_ESTADOS.includes(estado)) {
     query = query.eq('estado', estado)
   }

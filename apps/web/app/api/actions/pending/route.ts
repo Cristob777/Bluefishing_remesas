@@ -282,6 +282,83 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
       })
     })
 
+    // 10. REGISTRAR_NOTA_AGENSA — saldo a favor por provisión AGENSA > costo DIN
+    const { data: alertasSaldoFavor } = await supabase
+      .from('alertas')
+      .select('id, remesa_id, mensaje, urgente, created_at, remesa:remesas(id, numero_invoice, numero_despacho, din_numero, estado, proveedor:proveedores(nombre))')
+      .eq('tipo', 'SALDO_FAVOR_AGENSA')
+      .eq('leida', false)
+
+    const saldoRemesaIds = Array.from(new Set((alertasSaldoFavor ?? [])
+      .map(a => a.remesa_id)
+      .filter(Boolean))) as string[]
+
+    if (saldoRemesaIds.length) {
+      const [{ data: provisionesPagadas }, { data: dinDocs }] = await Promise.all([
+        supabase
+          .from('provisiones_fondos')
+          .select('remesa_id, monto_clp')
+          .in('remesa_id', saldoRemesaIds)
+          .eq('estado', 'PAGADO'),
+        supabase
+          .from('documentos')
+          .select('remesa_id, monto, created_at')
+          .in('remesa_id', saldoRemesaIds)
+          .eq('tipo', 'DIN')
+          .order('created_at', { ascending: false }),
+      ])
+
+      const provisionByRemesa = new Map<string, number>()
+      ;(provisionesPagadas ?? []).forEach(p => {
+        provisionByRemesa.set(p.remesa_id, (provisionByRemesa.get(p.remesa_id) ?? 0) + Number(p.monto_clp ?? 0))
+      })
+
+      const dinByRemesa = new Map<string, number>()
+      ;(dinDocs ?? []).forEach(d => {
+        if (!dinByRemesa.has(d.remesa_id)) {
+          dinByRemesa.set(d.remesa_id, Number(d.monto ?? 0))
+        }
+      })
+
+      alertasSaldoFavor?.forEach(a => {
+        const r = a.remesa as {
+          id?: string
+          numero_invoice?: string
+          numero_despacho?: string | null
+          din_numero?: string | null
+          estado?: string
+          proveedor?: { nombre?: string }
+        } | null
+
+        if (!r?.id) return
+
+        const provisionPagada = provisionByRemesa.get(r.id) ?? 0
+        const costoReal = dinByRemesa.get(r.id) ?? 0
+        const saldoFavor = Math.max(provisionPagada - costoReal, 0)
+
+        actions.push({
+          id:                   `nota-agensa-${a.id}`,
+          type:                 'REGISTRAR_NOTA_AGENSA',
+          title:                `Nota AGENSA — ${r.numero_invoice ?? '—'}`,
+          description:          saldoFavor > 0
+            ? `Saldo a favor ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(saldoFavor)} · registrar nota de crédito/débito o devolución`
+            : a.mensaje,
+          invoice:              r.numero_invoice ?? '—',
+          remesa_id:            r.id,
+          proveedor:            r.proveedor?.nombre ?? '—',
+          alert_id:             a.id,
+          numero_despacho:      r.numero_despacho ?? '—',
+          din_numero:           r.din_numero ?? null,
+          provision_pagada_clp: provisionPagada,
+          costo_real_clp:       costoReal,
+          saldo_favor_clp:      saldoFavor,
+          mensaje_alerta:       a.mensaje,
+          urgente:              a.urgente ?? true,
+          created_at:           a.created_at,
+        })
+      })
+    }
+
   } catch {
     // DB not connected — return empty
   }

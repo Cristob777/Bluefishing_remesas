@@ -40,6 +40,7 @@ const ESTADO_LABELS: Record<string, string> = {
   PROVISION_RECIBIDA:  'Provisión',
   MERCADERIA_RECIBIDA: 'Mercadería',
   RECONCILIADO:        'Reconciliado',
+  SALDO_FAVOR:         'Saldo AGENSA',
 }
 
 const ESTADO_BADGE: Record<string, 'neutral' | 'pending' | 'warning' | 'success' | 'purple' | 'info'> = {
@@ -51,15 +52,16 @@ const ESTADO_BADGE: Record<string, 'neutral' | 'pending' | 'warning' | 'success'
   PROVISION_RECIBIDA:  'info',
   MERCADERIA_RECIBIDA: 'info',
   RECONCILIADO:        'success',
+  SALDO_FAVOR:         'warning',
 }
 
-const PIPELINE = ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL','PAGO_COMPLETO','EN_ADUANA','PROVISION_RECIBIDA','MERCADERIA_RECIBIDA','RECONCILIADO']
+const PIPELINE = ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL','PAGO_COMPLETO','EN_ADUANA','PROVISION_RECIBIDA','MERCADERIA_RECIBIDA','SALDO_FAVOR','RECONCILIADO']
 
 const FILTER_GROUPS = [
   { label: 'Todas',      estados: null },
   { label: 'Por pagar',  estados: ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL'] },
   { label: 'En tránsito', estados: ['PAGO_COMPLETO','EN_ADUANA'] },
-  { label: 'En proceso', estados: ['PROVISION_RECIBIDA','MERCADERIA_RECIBIDA'] },
+  { label: 'En proceso', estados: ['PROVISION_RECIBIDA','MERCADERIA_RECIBIDA','SALDO_FAVOR'] },
   { label: 'Cerradas',   estados: ['RECONCILIADO'] },
 ]
 
@@ -73,7 +75,8 @@ function fmtMonto(n: number, moneda: string) {
 
 function PipelineBar({ estado }: { estado: string }) {
   const idx = PIPELINE.indexOf(estado)
-  const pct = Math.round(((idx + 1) / PIPELINE.length) * 100)
+  const safeIdx = idx >= 0 ? idx : 0
+  const pct = Math.round(((safeIdx + 1) / PIPELINE.length) * 100)
   const color = pct === 100 ? '#059669' : '#4F46E5'
   return (
     <div className="w-16 space-y-1">
@@ -94,6 +97,7 @@ const PIPELINE_STEPS = [
   { key: 'EN_ADUANA',           label: 'En aduana' },
   { key: 'PROVISION_RECIBIDA',  label: 'Provisión AGENSA' },
   { key: 'MERCADERIA_RECIBIDA', label: 'Mercadería recibida' },
+  { key: 'SALDO_FAVOR',         label: 'Nota AGENSA' },
   { key: 'RECONCILIADO',        label: 'Reconciliado' },
 ]
 
@@ -107,6 +111,7 @@ const AGENT_COLOR: Record<string, string> = {
   invoice_intake:     '#4F46E5',
   customs_funds:      '#D97706',
   din_reconciliation: '#7C3AED',
+  nota_debito:        '#C2410C',
   landed_cost:        '#059669',
   manual_action:      '#525252',
 }
