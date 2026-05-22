@@ -1,55 +1,108 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { google } from 'googleapis'
 
-const VALID_ACCOUNTS = new Set(['cristobal', 'sebastian', 'hector'])
+function sb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
-// GET /api/gmail-callback?code=...&state=cristobal
-// Google redirects here after user approves OAuth consent
-export async function GET(req: NextRequest) {
-  const code    = req.nextUrl.searchParams.get('code')
-  const account = req.nextUrl.searchParams.get('state') ?? ''
-
-  if (!code) {
-    return NextResponse.json({ error: 'Missing code' }, { status: 400 })
-  }
-
-  // Validate state to prevent open redirect / CSRF via forged callbacks
-  if (!VALID_ACCOUNTS.has(account)) {
-    return NextResponse.json({ error: 'Invalid state parameter' }, { status: 400 })
-  }
-
-  const baseUrl  = process.env.NEXTAUTH_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-  const oauth2   = new google.auth.OAuth2(
+function makeOAuth2Client(baseUrl: string) {
+  return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     `${baseUrl}/api/gmail-callback`,
   )
+}
 
-  const { tokens } = await oauth2.getToken(code)
-  const refreshToken = tokens.refresh_token
+// GET /api/gmail-callback?code=...&state=<nonce>:<account>
+// Google redirects here after the user approves OAuth consent.
+export async function GET(req: NextRequest) {
+  const code  = req.nextUrl.searchParams.get('code')
+  const state = req.nextUrl.searchParams.get('state') ?? ''
 
-  if (!refreshToken) {
-    return new NextResponse(
-      `<html><body style="font-family:sans-serif;padding:2rem">
-        <h2>⚠️ No refresh token received</h2>
-        <p>The account may already be authorized. Revoke access at
-        <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>
-        and try again.</p>
-      </body></html>`,
-      { headers: { 'Content-Type': 'text/html' } },
+  if (!code || !state) {
+    return NextResponse.redirect(new URL('/dashboard/settings?gmail=error&reason=missing_params', req.url))
+  }
+
+  // ── State decoding: "<nonce>:<account_label>" ──────────────────────────────
+  const colonIdx    = state.indexOf(':')
+  const nonce       = colonIdx > 0 ? state.slice(0, colonIdx) : state
+  const accountLabel = colonIdx > 0 ? state.slice(colonIdx + 1) : 'ops'
+
+  // ── CSRF: verify nonce exists in DB ───────────────────────────────────────
+  const supabase = sb()
+  const { data: nonceRow } = await supabase
+    .from('oauth_nonces')
+    .select('user_id')
+    .eq('nonce', nonce)
+    .maybeSingle()
+
+  if (!nonceRow) {
+    return NextResponse.redirect(new URL('/dashboard/settings?gmail=error&reason=invalid_state', req.url))
+  }
+
+  // Consume nonce immediately (one-time use)
+  await supabase.from('oauth_nonces').delete().eq('nonce', nonce)
+
+  // ── Exchange code for tokens ───────────────────────────────────────────────
+  const baseUrl = process.env.NEXTAUTH_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
+  const oauth2 = makeOAuth2Client(baseUrl)
+
+  let refreshToken: string
+  let email: string | null = null
+
+  try {
+    const { tokens } = await oauth2.getToken(code)
+    if (!tokens.refresh_token) {
+      return NextResponse.redirect(
+        new URL('/dashboard/settings?gmail=error&reason=no_refresh_token', req.url)
+      )
+    }
+    refreshToken = tokens.refresh_token
+
+    // Best-effort: get the email address for display
+    if (tokens.access_token) {
+      try {
+        oauth2.setCredentials(tokens)
+        const oauth2api = google.oauth2({ version: 'v2', auth: oauth2 })
+        const info = await oauth2api.userinfo.get()
+        email = info.data.email ?? null
+      } catch {
+        // non-fatal — email is optional
+      }
+    }
+  } catch {
+    return NextResponse.redirect(
+      new URL('/dashboard/settings?gmail=error&reason=token_exchange_failed', req.url)
     )
   }
 
-  return new NextResponse(
-    `<html><body style="font-family:sans-serif;padding:2rem;max-width:600px;margin:auto">
-      <h2>✅ Autorización exitosa — cuenta: ${account}</h2>
-      <p>Copia este refresh token y agrégalo en Vercel como variable de entorno:</p>
-      <p><strong>Nombre:</strong> <code>GMAIL_REFRESH_TOKEN_${account.toUpperCase()}</code></p>
-      <p><strong>Valor:</strong></p>
-      <textarea style="width:100%;height:80px;font-family:monospace;font-size:12px;padding:8px"
-        onclick="this.select()">${refreshToken}</textarea>
-      <p style="margin-top:1rem">Luego haz redeploy en Vercel y el polling quedará activo.</p>
-    </body></html>`,
-    { headers: { 'Content-Type': 'text/html' } },
+  // ── Upsert into gmail_accounts ─────────────────────────────────────────────
+  const { error: upsertError } = await supabase
+    .from('gmail_accounts')
+    .upsert(
+      {
+        account_label: accountLabel,
+        email,
+        refresh_token: refreshToken,
+        connected_by:  nonceRow.user_id,
+        updated_at:    new Date().toISOString(),
+      },
+      { onConflict: 'account_label' },
+    )
+
+  if (upsertError) {
+    return NextResponse.redirect(
+      new URL('/dashboard/settings?gmail=error&reason=db_write_failed', req.url)
+    )
+  }
+
+  return NextResponse.redirect(
+    new URL('/dashboard/settings?gmail=connected', req.url)
   )
 }

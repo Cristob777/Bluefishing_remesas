@@ -11,6 +11,7 @@ import {
   Zap,
   Bot,
   Command,
+  Settings,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { KBarSearch, useKBar } from '@/components/ui/KBarSearch'
@@ -24,6 +25,7 @@ const NAV = [
   { href: '/dashboard/stock',    label: 'Stock',      Icon: Package },
   { href: '/dashboard/actions',  label: 'Actions',    Icon: Zap, badgeKey: 'actions' },
   { href: '/dashboard/agents',   label: 'Agents',     Icon: Bot },
+  { href: '/dashboard/settings', label: 'Settings',   Icon: Settings },
 ]
 
 export function SidebarNav() {

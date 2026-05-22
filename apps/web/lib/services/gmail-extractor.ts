@@ -1,8 +1,24 @@
 import { google } from 'googleapis'
-import type { ExtractedEmail } from './imap-extractor'
+import { createClient } from '@supabase/supabase-js'
 import { db } from '@/lib/supabase'
 
-export type { ExtractedEmail }
+export interface ExtractedEmail {
+  messageId:   string
+  subject:     string
+  from:        string
+  to:          string
+  date:        string
+  bodyText:    string
+  account:     string
+  attachments: Array<{ filename: string; contentType: string; size: number }>
+}
+
+function serviceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 function getBaseUrl(): string {
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL
@@ -104,20 +120,27 @@ interface AccountConfig {
   email?:       string  // optional, for logging/display only
 }
 
-// ── Ops Inbox pattern ─────────────────────────────────────────────────────────
-// One monitored inbox per company. All operational stakeholders forward/CC emails
-// there via Gmail filter rules. No need to connect individual accounts.
-//
-// Set up to 8 accounts via env vars:
-//   GMAIL_REFRESH_TOKEN_OPS      → the shared ops inbox (recommended for new deployments)
-//   GMAIL_EMAIL_OPS              → email address of the ops inbox (optional, for logging)
-//   GMAIL_REFRESH_TOKEN_ACCOUNT_1..8 → legacy or multi-account setups
-//   GMAIL_EMAIL_ACCOUNT_1..8     → email addresses (optional)
-//
-// Legacy slots (backwards compat):
-//   GMAIL_REFRESH_TOKEN_SEBASTIAN / HECTOR / CRISTOBAL
+// ── Account loading ────────────────────────────────────────────────────────────
+// Primary source: gmail_accounts DB table (connected via /dashboard/settings).
+// Fallback: env vars GMAIL_REFRESH_TOKEN_* (backwards compat for existing deployments).
 
-function getAccounts(): AccountConfig[] {
+async function getAccountsFromDB(): Promise<AccountConfig[]> {
+  try {
+    const { data, error } = await serviceClient()
+      .from('gmail_accounts')
+      .select('account_label, email, refresh_token')
+    if (error || !data) return []
+    return data.map(row => ({
+      label:        row.account_label as AccountLabel,
+      refreshToken: row.refresh_token as string,
+      email:        row.email ?? undefined,
+    }))
+  } catch {
+    return []
+  }
+}
+
+function getAccountsFromEnv(): AccountConfig[] {
   const accounts: AccountConfig[] = []
   const seen = new Set<string>()
 
@@ -142,10 +165,20 @@ function getAccounts(): AccountConfig[] {
 
   // Legacy named slots (backwards compat for existing deployments)
   add(process.env.GMAIL_REFRESH_TOKEN_SEBASTIAN, 'sebastian', 'sebastian')
-  add(process.env.GMAIL_REFRESH_TOKEN_HECTOR,   'hector',    'hector')
+  add(process.env.GMAIL_REFRESH_TOKEN_HECTOR,    'hector',    'hector')
   add(process.env.GMAIL_REFRESH_TOKEN_CRISTOBAL, 'ops',       'cristobal')
 
   return accounts
+}
+
+async function getAccounts(): Promise<AccountConfig[]> {
+  const dbAccounts  = await getAccountsFromDB()
+  const envAccounts = getAccountsFromEnv()
+
+  // DB accounts take priority; env accounts fill in any not already present
+  const seen = new Set(dbAccounts.map(a => a.refreshToken))
+  const extra = envAccounts.filter(a => !seen.has(a.refreshToken))
+  return [...dbAccounts, ...extra]
 }
 
 async function pollGmailAccount(account: AccountConfig): Promise<ExtractedEmail[]> {
@@ -257,9 +290,9 @@ async function forwardToWebhook(email: ExtractedEmail): Promise<void> {
 }
 
 export async function pollAllGmailAccounts(): Promise<{ processed: number; errors: string[] }> {
-  const accounts = getAccounts()
+  const accounts = await getAccounts()
   if (!accounts.length) {
-    throw new Error('No Gmail accounts configured. Set GMAIL_REFRESH_TOKEN_CRISTOBAL, _SEBASTIAN, or _HECTOR')
+    throw new Error('No Gmail accounts configured. Connect one at /dashboard/settings or set GMAIL_REFRESH_TOKEN_* env vars.')
   }
 
   let processed = 0

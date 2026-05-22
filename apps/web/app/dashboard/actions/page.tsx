@@ -14,7 +14,7 @@ import {
   type VincularDespachoAction,
   type AprobarOperacionAction,
   type ArchivarExpedienteAction,
-} from '@/lib/mock-data'
+} from '@/types/actions'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
