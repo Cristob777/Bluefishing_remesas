@@ -23,8 +23,8 @@ const ESTADO_BADGE: Record<string, 'pending' | 'success' | 'purple' | 'info'> = 
 const ESTADO_LABEL: Record<string, string> = {
   PENDIENTE:       'Pendiente',
   INGRESADO_BSALE: 'En Bsale',
-  CON_DIFERENCIAS: 'With discrepancies',
-  CONTADO:         'Counted',
+  CON_DIFERENCIAS: 'Con diferencias',
+  CONTADO:         'Contado',
 }
 
 
@@ -73,9 +73,9 @@ export default function StockPage() {
     <div className="p-8 min-h-screen animate-fade-in" style={{ background: '#FAFAF9' }}>
       <div className="mb-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Inventario</p>
-        <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Stock & Recepción</h1>
+        <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Stock y Recepción</h1>
         <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>
-          {recepciones.length} receipts · count and discrepancy control
+          {recepciones.length} recepciones · control de conteo y diferencias
         </p>
       </div>
 
@@ -141,10 +141,10 @@ export default function StockPage() {
                   <div className="flex items-center gap-3">
                     <div>
                       <p className="text-sm font-bold" style={{ color: '#0A0A0A' }}>
-                        {rec.remesa?.proveedor?.nombre ?? 'Unknown supplier'}
+                        {rec.remesa?.proveedor?.nombre ?? 'Proveedor desconocido'}
                       </p>
                       <p className="text-xs mono mt-0.5" style={{ color: '#A3A3A3' }}>
-                        Invoice {rec.remesa?.numero_invoice ?? rec.remesa_id.slice(0, 8)}
+                        Factura {rec.remesa?.numero_invoice ?? rec.remesa_id.slice(0, 8)}
                       </p>
                     </div>
                     <Badge variant={ESTADO_BADGE[rec.estado] ?? 'neutral'} size="sm">
@@ -172,9 +172,9 @@ export default function StockPage() {
                 {/* Mini stats */}
                 <div className="grid grid-cols-3 divide-x px-0" style={{ borderBottom: '1px solid #E7E5E4', borderColor: '#E7E5E4' }}>
                   {[
-                    { label: 'Total SKUs',     value: items.length,    color: '#525252' },
-                    { label: 'With discrepancy', value: withDiff.length, color: withDiff.length > 0 ? '#DC2626' : '#059669' },
-                    { label: 'Completed',     value: `${pct}%`,       color: barColor },
+                    { label: 'Total SKUs',       value: items.length,    color: '#525252' },
+                    { label: 'Con diferencia',   value: withDiff.length, color: withDiff.length > 0 ? '#DC2626' : '#059669' },
+                    { label: 'Completado',       value: `${pct}%`,       color: barColor },
                   ].map(s => (
                     <div key={s.label} className="px-6 py-3">
                       <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#A3A3A3' }}>{s.label}</p>
@@ -231,14 +231,14 @@ export default function StockPage() {
                     <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>
                       {items.length} SKUs
                       {withDiff.length > 0
-                        ? <span style={{ color: '#B45309' }}> · {withDiff.length} with discrepancies</span>
-                        : <span style={{ color: '#059669' }}> · No discrepancies</span>
+                        ? <span style={{ color: '#B45309' }}> · {withDiff.length} con diferencias</span>
+                        : <span style={{ color: '#059669' }}> · sin diferencias</span>
                       }
                     </p>
                   </div>
                   {hasMore && (
                     <span className="text-xs font-medium" style={{ color: '#4F46E5' }}>
-                      +{items.length - 5} more items →
+                      +{items.length - 5} ítems más →
                     </span>
                   )}
                 </div>

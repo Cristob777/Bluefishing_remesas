@@ -5,10 +5,18 @@ import { withRole, readJsonBody, type AuthUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
 import { safeError } from '@/lib/errors'
 
-const Schema = z.object({
+const PaymentApprovalSchema = z.object({
   pago_id:  z.string().uuid(),
   alert_id: z.string().uuid().optional(),
 })
+
+const OperationApprovalSchema = z.object({
+  remesa_id: z.string().uuid(),
+  decision:  z.enum(['aprobado', 'rechazado']),
+  notas:     z.string().max(500).optional(),
+})
+
+const Schema = z.union([PaymentApprovalSchema, OperationApprovalSchema])
 
 // CLP threshold from CLAUDE.md: operations > 5M CLP require human approval (owner only)
 const APPROVAL_THRESHOLD_CLP = 5_000_000
@@ -39,8 +47,34 @@ export const POST = withRole(['owner'], async (req: NextRequest, user: AuthUser)
     )
   }
 
-  const { pago_id, alert_id } = parsed.data
   const supabase = sb()
+
+  if ('remesa_id' in parsed.data) {
+    const { remesa_id, decision, notas } = parsed.data
+
+    try {
+      await supabase
+        .from('alertas')
+        .update({ leida: true, leida_at: new Date().toISOString() })
+        .eq('remesa_id', remesa_id)
+        .eq('tipo', 'APROBACION_REQUERIDA')
+        .eq('leida', false)
+
+      await supabase.from('agent_logs').insert({
+        agent_name: 'manual_action',
+        remesa_id,
+        accion:     decision === 'aprobado' ? 'OPERACION_APROBADA' : 'OPERACION_RECHAZADA',
+        payload:    { decision, notas: notas ?? null, by: user.email },
+        resultado:  'SUCCESS',
+      })
+
+      return NextResponse.json({ success: true, action: `operation_${decision}` })
+    } catch (err) {
+      return safeError(err, 'approve-payment')
+    }
+  }
+
+  const { pago_id, alert_id } = parsed.data
 
   try {
     // Fetch payment to enforce CLP threshold

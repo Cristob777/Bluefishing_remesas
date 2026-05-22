@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/Badge'
 import { Bot } from 'lucide-react'
 
 const AGENT_META: Record<string, { label: string; icon: string; color: string; bg: string; border: string }> = {
-  invoice_intake:     { label: 'Invoice Intake',     icon: '📄', color: '#4F46E5', bg: '#EEF2FF', border: '#C7D2FE' },
-  customs_funds:      { label: 'Customs Funds',      icon: '🏛️', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  din_reconciliation: { label: 'DIN Reconciliation', icon: '📋', color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
-  landed_cost:        { label: 'Landed Cost',        icon: '💰', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  invoice_intake:     { label: 'Recepción de Facturas', icon: '📄', color: '#4F46E5', bg: '#EEF2FF', border: '#C7D2FE' },
+  customs_funds:      { label: 'Fondos de Aduana',       icon: '🏛️', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  din_reconciliation: { label: 'Reconciliación DIN',     icon: '📋', color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  landed_cost:        { label: 'Costo Total',            icon: '💰', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
 }
 
 const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'landed_cost']
@@ -83,11 +83,11 @@ function ReasoningPanel({ log }: { log: AgentLog }) {
 function relTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const min  = Math.floor(diff / 60000)
-  if (min < 1)  return 'just now'
-  if (min < 60) return `${min}m ago`
+  if (min < 1)  return 'ahora'
+  if (min < 60) return `hace ${min} min`
   const h = Math.floor(min / 60)
-  if (h < 24)   return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
+  if (h < 24)   return `hace ${h} h`
+  return `hace ${Math.floor(h / 24)} d`
 }
 
 export default function AgentsPage() {
@@ -150,7 +150,7 @@ export default function AgentsPage() {
         <div className="relative">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Sistema</p>
           <h1 className="text-4xl font-bold text-white">Agentes</h1>
-          <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>4 active Claude agents · real-time activity</p>
+          <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>4 agentes Claude activos · actividad en tiempo real</p>
         </div>
       </div>
 
@@ -223,8 +223,8 @@ export default function AgentsPage() {
           ) : !logs.length ? (
             <EmptyState
               icon={<Bot size={20} style={{ color: '#A3A3A3' }} />}
-              title="Agents are standing by"
-              description="They will activate when the first email arrives. Connect Gmail to get started."
+              title="Agentes en espera"
+              description="Se activarán cuando llegue el primer correo. Conecta Gmail para comenzar."
             />
           ) : (
             <div className="divide-y" style={{ borderColor: '#F5F5F4' }}>
