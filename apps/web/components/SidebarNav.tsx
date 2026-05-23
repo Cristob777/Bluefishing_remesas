@@ -10,6 +10,8 @@ import {
   Package,
   Zap,
   Bot,
+  FileText,
+  GitBranch,
   Settings,
   Command,
 } from 'lucide-react'
@@ -24,7 +26,9 @@ const NAV = [
   { href: '/dashboard/remesas',  label: 'Remesas',       Icon: ArrowLeftRight },
   { href: '/dashboard/stock',    label: 'Stock',         Icon: Package },
   { href: '/dashboard/actions',  label: 'Acciones',      Icon: Zap, badgeKey: 'actions' },
-  { href: '/dashboard/agents',   label: 'Agentes',       Icon: Bot },
+  { href: '/dashboard/agents',    label: 'Agentes',       Icon: Bot },
+  { href: '/dashboard/documentos', label: 'Documentos',  Icon: FileText },
+  { href: '/dashboard/reglas',    label: 'Reglas',       Icon: GitBranch },
   { href: '/dashboard/settings', label: 'Configuración', Icon: Settings },
 ]
 

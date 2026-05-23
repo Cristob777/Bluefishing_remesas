@@ -5,8 +5,10 @@ import { OnboardingHero } from '@/components/ui/OnboardingHero'
 import { GmailErrorBanner } from '@/components/ui/GmailErrorBanner'
 import { Bot } from 'lucide-react'
 
-function fmtCLP(n: number) {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n)
+function fmtMonto(n: number, moneda: string) {
+  if (moneda === 'JPY') return `¥${n.toLocaleString('ja-JP')}`
+  if (moneda === 'CLP') return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n)
+  return `${moneda} ${n.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function relTime(iso: string) {
@@ -36,12 +38,29 @@ const ALERTA_ICON: Record<string, string> = {
   SALDO_FAVOR_AGENSA:   '🧾',
 }
 
-const STARS = Array.from({ length: 40 }, (_, i) => ({
-  x:    ((i * 73 + 17) % 100),
-  y:    ((i * 41 + 29) % 100),
-  size: i % 5 === 0 ? 2 : i % 3 === 0 ? 1.5 : 1,
-  delay: (i * 0.15) % 3,
-}))
+const ESTADO_COLOR: Record<string, { color: string; bg: string }> = {
+  INVOICE_RECIBIDO:    { color: '#525252', bg: '#F5F5F4' },
+  PAGO_PENDIENTE:      { color: '#D97706', bg: '#FFFBEB' },
+  PAGO_PARCIAL:        { color: '#B45309', bg: '#FEF3C7' },
+  PAGO_COMPLETO:       { color: '#059669', bg: '#ECFDF5' },
+  EN_ADUANA:           { color: '#7C3AED', bg: '#F5F3FF' },
+  PROVISION_RECIBIDA:  { color: '#2563EB', bg: '#EFF6FF' },
+  MERCADERIA_RECIBIDA: { color: '#0891B2', bg: '#ECFEFF' },
+  RECONCILIADO:        { color: '#059669', bg: '#ECFDF5' },
+  SALDO_FAVOR:         { color: '#B45309', bg: '#FEF3C7' },
+}
+
+const ESTADO_LABELS: Record<string, string> = {
+  INVOICE_RECIBIDO:    'Factura',
+  PAGO_PENDIENTE:      'Por pagar',
+  PAGO_PARCIAL:        'Parcial',
+  PAGO_COMPLETO:       'Pagado',
+  EN_ADUANA:           'Aduana',
+  PROVISION_RECIBIDA:  'Provisión',
+  MERCADERIA_RECIBIDA: 'Recibida',
+  RECONCILIADO:        'Reconciliado',
+  SALDO_FAVOR:         'Saldo',
+}
 
 interface AgentLogRow {
   id: string
@@ -51,7 +70,6 @@ interface AgentLogRow {
   created_at: string
 }
 
-// Group consecutive identical agent logs into a single row with count
 function dedupeLogs(logs: AgentLogRow[]) {
   const out: Array<AgentLogRow & { count: number; first_at: string; last_at: string }> = []
   for (const log of logs) {
@@ -64,6 +82,13 @@ function dedupeLogs(logs: AgentLogRow[]) {
     }
   }
   return out
+}
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Buenos días'
+  if (h < 19) return 'Buenas tardes'
+  return 'Buenas noches'
 }
 
 export default async function OverviewPage() {
@@ -89,6 +114,7 @@ export default async function OverviewPage() {
     { data: agentLogs },
     { data: usdExposure },
     { data: jpyExposure },
+    { data: recentRemesas },
   ] = await Promise.all([
     supabase.from('remesas').select('*', { count: 'exact', head: true }).not('estado', 'eq', 'RECONCILIADO'),
     supabase.from('pagos').select('*', { count: 'exact', head: true }).eq('estado', 'PENDIENTE'),
@@ -101,6 +127,10 @@ export default async function OverviewPage() {
     supabase.from('agent_logs').select('*').order('created_at', { ascending: false }).limit(20),
     supabase.from('remesas').select('monto_original').eq('moneda_origen', 'USD').not('estado', 'eq', 'RECONCILIADO'),
     supabase.from('remesas').select('monto_original').eq('moneda_origen', 'JPY').not('estado', 'eq', 'RECONCILIADO'),
+    supabase.from('remesas')
+      .select('id, numero_invoice, monto_original, moneda_origen, estado, created_at, proveedor:proveedores(nombre)')
+      .order('created_at', { ascending: false })
+      .limit(5),
   ])
 
   const stats = {
@@ -110,19 +140,16 @@ export default async function OverviewPage() {
     diferenciasStock:    r4.count ?? 0,
   }
 
-  // First-run detection — DB is essentially empty
   const proveedoresCount = rProv.count ?? 0
   const remesasTotal     = rRemesasAll.count ?? 0
   const pagosConfirmados = rPagos.count ?? 0
   const isFirstRun       = proveedoresCount === 0 && remesasTotal === 0
 
-  // Gmail error detection — last imap_poller log is an error
   const recentLogs   = (agentLogs ?? []) as AgentLogRow[]
   const lastImapLog  = recentLogs.find(l => l.agent_name === 'imap_poller')
   const gmailBroken  = lastImapLog?.resultado === 'ERROR'
   const lastErrorAt  = gmailBroken ? lastImapLog!.created_at : undefined
 
-  // ── First-run: onboarding checklist instead of empty stats ─────────────
   if (isFirstRun) {
     const onboardingSteps = [
       {
@@ -162,7 +189,6 @@ export default async function OverviewPage() {
     )
   }
 
-  // ── Normal operation: stats + activity ─────────────────────────────────
   const totalUSD = (usdExposure ?? []).reduce((s: number, r: { monto_original: number }) => s + (r.monto_original || 0), 0)
   const totalJPY = (jpyExposure ?? []).reduce((s: number, r: { monto_original: number }) => s + (r.monto_original || 0), 0)
   const showFxRow = totalUSD > 0 || totalJPY > 0
@@ -171,122 +197,222 @@ export default async function OverviewPage() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
+  const ownerName = (process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'Admin').split(' ')[0]
+
   const STAT_CARDS = [
-    { label: 'Remesas activas',       value: stats.remesasActivas,      sub: 'en curso',             icon: '📦', accent: '#4F46E5', cssAccent: '#4F46E5', bg: '#EEF2FF' },
-    { label: 'Pagos pendientes',      value: stats.pagosPendientes,     sub: 'órdenes por emitir',   icon: '💳', accent: '#D97706', cssAccent: '#D97706', bg: '#FFFBEB' },
-    { label: 'Provisiones urgentes',  value: stats.provisionesUrgentes, sub: 'vencen en ≤ 3 días',   icon: '⚡', accent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', cssAccent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669', bg: stats.provisionesUrgentes > 0 ? '#FEF2F2' : '#ECFDF5' },
-    { label: 'Diferencias de stock',  value: stats.diferenciasStock,    sub: 'SKUs sin resolver',    icon: '📊', accent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', cssAccent: stats.diferenciasStock > 0 ? '#D97706' : '#059669', bg: stats.diferenciasStock > 0 ? '#FFFBEB' : '#ECFDF5' },
+    { label: 'Remesas activas',      value: stats.remesasActivas,      sub: 'en curso',           accent: '#4F46E5' },
+    { label: 'Pagos pendientes',     value: stats.pagosPendientes,     sub: 'por emitir',         accent: '#D97706' },
+    { label: 'Provisiones urgentes', value: stats.provisionesUrgentes, sub: 'vencen en ≤ 3 días', accent: stats.provisionesUrgentes > 0 ? '#DC2626' : '#059669' },
+    { label: 'Diferencias stock',    value: stats.diferenciasStock,    sub: 'SKUs sin resolver',  accent: stats.diferenciasStock > 0 ? '#D97706' : '#059669' },
   ]
 
-  const dedupedLogs = dedupeLogs(recentLogs).slice(0, 6)
+  const dedupedLogs = dedupeLogs(recentLogs).slice(0, 8)
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
 
       {gmailBroken && <GmailErrorBanner lastErrorAt={lastErrorAt} />}
 
-      <div className="relative overflow-hidden bg-galactic px-8 pt-10 pb-14">
-        {STARS.map((s, i) => (
-          <span
-            key={i}
-            className="star"
-            style={{
-              left: `${s.x}%`,
-              top: `${s.y}%`,
-              width: s.size,
-              height: s.size,
-              animationDelay: `${s.delay}s`,
-            }}
-          />
-        ))}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 55% 35% at 18% 55%, rgba(139,92,246,.10) 0%, transparent 65%)' }}
-        />
-
-        <div className="relative flex items-start justify-between">
+      {/* ── Clean header ─────────────────────────────────────────────────── */}
+      <div className="bg-white border-b px-8 pt-8 pb-6" style={{ borderColor: '#E7E5E4' }}>
+        <div className="flex items-start justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Panel
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-1" style={{ color: '#A3A3A3' }}>
+              Panel de control
             </p>
-            <h1 className="text-[2.6rem] font-bold tracking-tight text-white leading-none">Operaciones</h1>
-            <p className="text-sm mt-2.5 capitalize" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              {today}
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>
+              {greeting()}, {ownerName}
+            </h1>
+            <p className="text-sm mt-1 capitalize" style={{ color: '#A3A3A3' }}>{today}</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2 mt-1">
             <div
-              className="flex items-center gap-2 px-3.5 py-2 rounded-full"
-              style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)' }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+              style={{ background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' }}
             >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: '#4ADE80', display: 'inline-block' }} />
-              <span className="text-xs font-semibold" style={{ color: 'rgba(74,222,128,0.9)' }}>4 agentes activos</span>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: '#059669', display: 'inline-block' }} />
+              <span className="text-xs font-semibold" style={{ color: '#059669' }}>4 agentes activos</span>
             </div>
-            <p className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>{process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Operaciones de Importación'}</p>
+            <p className="text-[11px]" style={{ color: '#A3A3A3' }}>{process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Operaciones de Importación'}</p>
           </div>
         </div>
       </div>
 
-      <div className="px-8 -mt-8 relative z-10">
-        <div className="grid grid-cols-4 gap-4 stagger">
+      {/* ── Stat cards ──────────────────────────────────────────────────── */}
+      <div className="px-8 pt-6">
+        <div className="grid grid-cols-4 gap-4">
           {STAT_CARDS.map(s => (
             <div
               key={s.label}
-              className="card-stat p-5"
-              style={{ ['--stat-accent' as string]: s.cssAccent, boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}
+              className="bg-white rounded-xl p-5 border"
+              style={{ borderColor: '#E7E5E4', borderLeft: `3px solid ${s.accent}`, boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div
-                  className="flex items-center justify-center w-10 h-10 rounded-xl text-xl flex-shrink-0"
-                  style={{ background: s.bg }}
-                >
-                  {s.icon}
-                </div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider mt-1" style={{ color: '#A3A3A3' }}>
-                  {s.sub}
-                </span>
-              </div>
-              <p className="text-[38px] font-extrabold mono leading-none" style={{ color: s.accent }}>{s.value}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: '#A3A3A3' }}>{s.sub}</p>
+              <p className="text-[38px] font-extrabold leading-none mono" style={{ color: s.accent }}>{s.value}</p>
               <p className="text-xs mt-2 font-semibold" style={{ color: '#525252' }}>{s.label}</p>
             </div>
           ))}
         </div>
       </div>
 
+      {/* ── FX exposure row ──────────────────────────────────────────────── */}
       {showFxRow && (
-        <div className="px-8 mt-5 grid grid-cols-2 gap-4">
+        <div className="px-8 mt-4 grid grid-cols-2 gap-4">
           {[
             { flag: '🇺🇸', label: 'Exposición USD', value: `$${totalUSD.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, currency: 'USD', iconBg: '#FEF3C7', accent: '#D97706', show: totalUSD > 0 },
             { flag: '🇯🇵', label: 'Exposición JPY', value: `¥${totalJPY.toLocaleString('ja-JP')}`, currency: 'JPY', iconBg: '#EEF2FF', accent: '#4F46E5', show: totalJPY > 0 },
           ].filter(fx => fx.show).map(fx => (
-            <div key={fx.currency} className="card p-5 flex items-center gap-4">
-              <div
-                className="flex items-center justify-center w-12 h-12 rounded-xl text-2xl flex-shrink-0"
-                style={{ background: fx.iconBg }}
-              >
+            <div key={fx.currency} className="bg-white rounded-xl border p-4 flex items-center gap-4" style={{ borderColor: '#E7E5E4' }}>
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl text-xl flex-shrink-0" style={{ background: fx.iconBg }}>
                 {fx.flag}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#A3A3A3' }}>{fx.label}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: '#A3A3A3' }}>{fx.label}</p>
                 <div className="flex items-baseline gap-1.5">
-                  <p className="text-2xl font-extrabold mono leading-none" style={{ color: '#0A0A0A' }}>{fx.value}</p>
-                  <span
-                    className="text-[11px] font-bold px-1.5 py-0.5 rounded-md"
-                    style={{ background: fx.iconBg, color: fx.accent }}
-                  >
-                    {fx.currency}
-                  </span>
+                  <p className="text-xl font-extrabold mono leading-none" style={{ color: '#0A0A0A' }}>{fx.value}</p>
+                  <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: fx.iconBg, color: fx.accent }}>{fx.currency}</span>
                 </div>
-                <p className="text-[10px] mt-1.5" style={{ color: '#A3A3A3' }}>en remesas activas</p>
+                <p className="text-[10px] mt-1" style={{ color: '#A3A3A3' }}>en remesas activas</p>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <div className="px-8 mt-6 pb-8 grid grid-cols-5 gap-6">
+      {/* ── Main grid ────────────────────────────────────────────────────── */}
+      <div className="px-8 mt-5 pb-8 grid grid-cols-5 gap-5">
 
-        <div className="col-span-3 card overflow-hidden">
+        {/* Left: recent remesas mini-table */}
+        <div className="col-span-3 bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E7E5E4' }}>
+          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
+            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Remesas recientes</h2>
+            <a href="/dashboard/remesas" className="text-[11px] font-semibold" style={{ color: '#4F46E5' }}>
+              Ver todas →
+            </a>
+          </div>
+
+          {!recentRemesas?.length ? (
+            <EmptyState
+              icon={<span style={{ fontSize: 22 }}>📦</span>}
+              title="Sin remesas"
+              description="Las remesas aparecerán aquí cuando llegue la primera factura."
+            />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: '#FAFAF9', borderBottom: '1px solid #E7E5E4' }}>
+                  {['Nº Invoice', 'Proveedor', 'Monto', 'Estado', 'Fecha'].map(h => (
+                    <th key={h} className="px-5 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider" style={{ color: '#A3A3A3' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {((recentRemesas ?? []) as unknown as Array<{
+                  id: string
+                  numero_invoice: string
+                  monto_original: number
+                  moneda_origen: string
+                  estado: string
+                  created_at: string
+                  proveedor: Array<{ nombre: string }> | { nombre: string } | null
+                }>).map((r, i) => {
+                  const ec = ESTADO_COLOR[r.estado] ?? { color: '#525252', bg: '#F5F5F4' }
+                  const provNombre = Array.isArray(r.proveedor)
+                    ? r.proveedor[0]?.nombre
+                    : r.proveedor?.nombre
+                  return (
+                    <tr
+                      key={r.id}
+                      className="transition-colors hover:bg-stone-50"
+                      style={{ borderBottom: i < (recentRemesas?.length ?? 0) - 1 ? '1px solid #F5F5F4' : 'none' }}
+                    >
+                      <td className="px-5 py-3 text-[12px] font-semibold mono" style={{ color: '#0A0A0A' }}>
+                        {r.numero_invoice}
+                      </td>
+                      <td className="px-5 py-3 text-[12px]" style={{ color: '#525252' }}>
+                        {provNombre ?? '—'}
+                      </td>
+                      <td className="px-5 py-3 text-[12px] font-semibold mono" style={{ color: '#0A0A0A' }}>
+                        {fmtMonto(r.monto_original, r.moneda_origen)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          style={{ background: ec.bg, color: ec.color }}
+                        >
+                          {ESTADO_LABELS[r.estado] ?? r.estado}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-[11px] mono" style={{ color: '#A3A3A3' }}>
+                        {relTime(r.created_at)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Right: agent activity */}
+        <div className="col-span-2 bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E7E5E4' }}>
+          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
+            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Actividad de agentes</h2>
+            <span className="text-[11px]" style={{ color: '#A3A3A3' }}>Últimas acciones</span>
+          </div>
+
+          {!dedupedLogs.length ? (
+            <EmptyState
+              icon={<Bot size={20} style={{ color: '#A3A3A3' }} />}
+              title="Agentes en espera"
+              description="Se activarán cuando llegue el primer correo."
+            />
+          ) : (
+            <div>
+              {dedupedLogs.map((l, i) => {
+                const meta   = AGENT_META[l.agent_name] ?? { label: l.agent_name, color: '#525252', bg: '#F5F5F4' }
+                const isDone = l.resultado === 'SUCCESS'
+                const isErr  = l.resultado === 'ERROR'
+                const showCount = l.count > 1
+                return (
+                  <div
+                    key={l.id}
+                    className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-stone-50"
+                    style={{ borderBottom: i < dedupedLogs.length - 1 ? '1px solid #F5F5F4' : 'none' }}
+                  >
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: meta.bg, color: meta.color }}>
+                      {meta.label}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate" style={{ color: '#0A0A0A' }}>
+                        {l.accion.replace(/_/g, ' ').toLowerCase()}
+                        {showCount && <span className="ml-1.5 font-mono" style={{ color: '#A3A3A3' }}>×{l.count}</span>}
+                      </p>
+                      <p className="text-[10px] mono" style={{ color: '#A3A3A3' }}>{relTime(l.last_at)}</p>
+                    </div>
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                      style={
+                        isDone ? { background: '#ECFDF5', color: '#059669' }
+                        : isErr ? { background: '#FEF2F2', color: '#DC2626' }
+                        : { background: '#FFFBEB', color: '#D97706' }
+                      }
+                    >
+                      {l.resultado ?? '—'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Alertas full width ───────────────────────────────────────────── */}
+      <div className="px-8 pb-8">
+        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E7E5E4' }}>
           <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
             <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Alertas activas</h2>
             {alertas && alertas.length > 0 && (
@@ -320,10 +446,7 @@ export default async function OverviewPage() {
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] mono" style={{ color: '#A3A3A3' }}>{relTime(a.created_at)}</span>
                       <span style={{ color: '#D6D3D1' }}>·</span>
-                      <span
-                        className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
-                        style={{ background: '#F5F5F4', color: '#737373' }}
-                      >
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ background: '#F5F5F4', color: '#737373' }}>
                         {a.destinatario}
                       </span>
                     </div>
@@ -332,61 +455,6 @@ export default async function OverviewPage() {
                 </li>
               ))}
             </ul>
-          )}
-        </div>
-
-        <div className="col-span-2 card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
-            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Actividad de agentes</h2>
-            <span className="text-[11px]" style={{ color: '#A3A3A3' }}>Últimas acciones</span>
-          </div>
-
-          {!dedupedLogs.length ? (
-            <EmptyState
-              icon={<Bot size={20} style={{ color: '#A3A3A3' }} />}
-              title="Agentes en espera"
-              description="Se activarán cuando llegue el primer correo."
-            />
-          ) : (
-            <div>
-              {dedupedLogs.map((l, i) => {
-                const meta   = AGENT_META[l.agent_name] ?? { label: l.agent_name, color: '#525252', bg: '#F5F5F4' }
-                const isDone = l.resultado === 'SUCCESS'
-                const isErr  = l.resultado === 'ERROR'
-                const showCount = l.count > 1
-                return (
-                  <div
-                    key={l.id}
-                    className="flex items-center gap-3 px-5 py-3.5 transition-colors"
-                    style={{ borderBottom: i < dedupedLogs.length - 1 ? '1px solid #F5F5F4' : 'none' }}
-                  >
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                      style={{ background: meta.bg, color: meta.color }}
-                    >
-                      {meta.label}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate" style={{ color: '#0A0A0A' }}>
-                        {l.accion.replace(/_/g, ' ').toLowerCase()}
-                        {showCount && <span className="ml-1.5 font-mono" style={{ color: '#A3A3A3' }}>×{l.count}</span>}
-                      </p>
-                      <p className="text-[10px] mono" style={{ color: '#A3A3A3' }}>{relTime(l.last_at)}</p>
-                    </div>
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                      style={
-                        isDone ? { background: '#ECFDF5', color: '#059669' }
-                        : isErr ? { background: '#FEF2F2', color: '#DC2626' }
-                        : { background: '#FFFBEB', color: '#D97706' }
-                      }
-                    >
-                      {l.resultado ?? '—'}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
           )}
         </div>
       </div>
