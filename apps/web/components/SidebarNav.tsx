@@ -18,8 +18,8 @@ import {
 import { Logo } from '@/components/ui/Logo'
 import { KBarSearch, useKBar } from '@/components/ui/KBarSearch'
 
-const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'landed_cost']
-const AGENT_COLORS = ['#4F46E5', '#059669', '#D97706', '#7C3AED']
+const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'nota_debito', 'landed_cost']
+const AGENT_COLORS = ['#4F46E5', '#D97706', '#7C3AED', '#C2410C', '#059669']
 
 const NAV = [
   { href: '/dashboard/overview', label: 'Resumen',       Icon: LayoutDashboard },
