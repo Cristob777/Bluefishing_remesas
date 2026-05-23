@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { GmailDiagnostics } from '@/components/settings/GmailDiagnostics'
 
 function sb() {
   return createClient(
@@ -40,7 +41,7 @@ export default async function SettingsPage({
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
+    <div className="max-w-5xl mx-auto px-6 py-8">
 
       {/* Header */}
       <div className="mb-8">
@@ -152,6 +153,8 @@ export default async function SettingsPage({
         </a>{' '}
         para reenviar automáticamente emails de proveedores y aduana.
       </p>
+
+      <GmailDiagnostics />
     </div>
   )
 }
