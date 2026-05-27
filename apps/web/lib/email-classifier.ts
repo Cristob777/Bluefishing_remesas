@@ -36,6 +36,7 @@ export async function classifyEmail(
     payload.email_body,
     payload.attachment_filename ? `\nAdjunto: ${payload.attachment_filename}` : '',
     payload.attachment_text ? `\nContenido adjunto:\n${payload.attachment_text}` : '',
+    payload.google_document_ai_id ? `\nGoogle Document AI ID: ${payload.google_document_ai_id}` : '',
   ]
     .join('\n')
     .trim()

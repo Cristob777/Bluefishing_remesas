@@ -18,6 +18,10 @@ interface Documento {
   agente_nombre: string | null
   confianza: number | null
   campos_extraidos: Record<string, unknown> | null
+  google_document_ai_id: string | null
+  google_document_ai_revision_id: string | null
+  google_document_ai_processor: string | null
+  google_document_ai_gcs_uri: string | null
   created_at: string
   remesa?: {
     numero_invoice: string
@@ -208,6 +212,15 @@ export default function DocumentosPage() {
                             · {doc.remesa.proveedor.nombre}
                           </span>
                         )}
+                        {doc.google_document_ai_id && (
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={{ background: '#F0F9FF', color: '#0284C7' }}
+                            title={doc.google_document_ai_id}
+                          >
+                            DocAI
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
                         {doc.monto != null && doc.moneda && (
@@ -319,6 +332,25 @@ export default function DocumentosPage() {
                   <span className="mono" style={{ color: '#0A0A0A' }}>{selected.agente_nombre}</span>
                 </div>
               )}
+              {selected.google_document_ai_id && (
+                <div className="pt-2 mt-2" style={{ borderTop: '1px solid #F5F5F4' }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#A3A3A3' }}>
+                    Google Document AI
+                  </p>
+                  <div className="space-y-1.5">
+                    <MetaRow label="Document ID" value={selected.google_document_ai_id} />
+                    {selected.google_document_ai_revision_id && (
+                      <MetaRow label="Revision" value={selected.google_document_ai_revision_id} />
+                    )}
+                    {selected.google_document_ai_processor && (
+                      <MetaRow label="Processor" value={selected.google_document_ai_processor} />
+                    )}
+                    {selected.google_document_ai_gcs_uri && (
+                      <MetaRow label="GCS URI" value={selected.google_document_ai_gcs_uri} />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action button (placeholder) */}
@@ -335,6 +367,15 @@ export default function DocumentosPage() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-0.5 text-[11px]">
+      <span style={{ color: '#A3A3A3' }}>{label}</span>
+      <span className="mono break-all" style={{ color: '#0A0A0A' }}>{value}</span>
     </div>
   )
 }

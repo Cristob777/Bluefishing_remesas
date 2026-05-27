@@ -19,6 +19,7 @@ export function getClientIp(req: NextRequest): string {
 const EMAIL_RE       = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_BODY_LEN   = 50_000
 const MAX_ATTACH_LEN = 200_000
+const MAX_GOOGLE_ID_LEN = 1_500
 
 export interface ValidationResult {
   valid: boolean
@@ -61,6 +62,22 @@ export function validateWebhookPayload(payload: unknown): ValidationResult {
     }
   }
 
+  for (const field of [
+    'google_document_ai_id',
+    'google_document_ai_revision_id',
+    'google_document_ai_processor',
+    'google_document_ai_gcs_uri',
+  ]) {
+    if (p[field] !== undefined) {
+      if (typeof p[field] !== 'string') {
+        return { valid: false, error: `${field} must be a string` }
+      }
+      if (p[field].length > MAX_GOOGLE_ID_LEN) {
+        return { valid: false, error: `${field} exceeds max length of ${MAX_GOOGLE_ID_LEN} chars` }
+      }
+    }
+  }
+
   if (typeof p.account !== 'string' || p.account.trim().length === 0) {
     return { valid: false, error: 'account must be a non-empty string' }
   }
@@ -80,6 +97,10 @@ export function sanitizePayload(payload: WebhookEmailPayload): WebhookEmailPaylo
     email_body:          clean(payload.email_body),
     attachment_text:     payload.attachment_text     ? clean(payload.attachment_text)     : undefined,
     attachment_filename: payload.attachment_filename ? clean(payload.attachment_filename) : undefined,
+    google_document_ai_id:          payload.google_document_ai_id          ? clean(payload.google_document_ai_id)          : undefined,
+    google_document_ai_revision_id: payload.google_document_ai_revision_id ? clean(payload.google_document_ai_revision_id) : undefined,
+    google_document_ai_processor:   payload.google_document_ai_processor   ? clean(payload.google_document_ai_processor)   : undefined,
+    google_document_ai_gcs_uri:     payload.google_document_ai_gcs_uri     ? clean(payload.google_document_ai_gcs_uri)     : undefined,
   }
 }
 

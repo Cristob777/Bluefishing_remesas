@@ -11,6 +11,28 @@ import {
 } from '@/lib/security'
 import type { WebhookEmailPayload } from '@/types'
 
+async function tagDocumentsWithDocumentAiId(payload: WebhookEmailPayload) {
+  if (!payload.google_document_ai_id) return
+
+  const { error } = await supabase
+    .from('documentos')
+    .update({
+      google_document_ai_id:          payload.google_document_ai_id,
+      google_document_ai_revision_id: payload.google_document_ai_revision_id ?? null,
+      google_document_ai_processor:   payload.google_document_ai_processor ?? null,
+      google_document_ai_gcs_uri:     payload.google_document_ai_gcs_uri ?? null,
+    })
+    .eq('email_id_origen', payload.email_id)
+
+  if (error) {
+    console.error('[webhook-email] document_ai_tag_failed', {
+      email_id: payload.email_id,
+      google_document_ai_id: payload.google_document_ai_id,
+      error: error.message,
+    })
+  }
+}
+
 export async function POST(req: NextRequest) {
   // 1. Rate limiting
   const ip = getClientIp(req)
@@ -77,6 +99,7 @@ export async function POST(req: NextRequest) {
     email_id_origen: payload.email_id,
     archivo_nombre: payload.attachment_filename ?? null,
   })
+  await tagDocumentsWithDocumentAiId(payload)
 
   // Audit: registrar clasificación
   await supabase.from('agent_logs').insert({
@@ -104,6 +127,7 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await triggerAgent(agentName, classified)
+  await tagDocumentsWithDocumentAiId(payload)
 
   await supabase.from('agent_logs').insert({
     agent_name: agentName,

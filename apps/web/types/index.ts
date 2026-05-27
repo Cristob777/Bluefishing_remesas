@@ -133,6 +133,10 @@ export interface Documento {
   moneda: string | null
   fecha: string | null
   email_id_origen: string | null
+  google_document_ai_id: string | null
+  google_document_ai_revision_id: string | null
+  google_document_ai_processor: string | null
+  google_document_ai_gcs_uri: string | null
   created_at: string
 }
 
@@ -176,6 +180,10 @@ export interface WebhookEmailPayload {
   email_body: string
   attachment_text?: string
   attachment_filename?: string
+  google_document_ai_id?: string
+  google_document_ai_revision_id?: string
+  google_document_ai_processor?: string
+  google_document_ai_gcs_uri?: string
   account: string  // 'sebastian' | 'hector' | 'ops' | any named slot
 }
 
