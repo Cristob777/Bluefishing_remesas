@@ -2,141 +2,184 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { clsx } from 'clsx'
 import {
-  LayoutDashboard,
-  ArrowLeftRight,
-  Package,
-  Zap,
   Bot,
+  ChevronsUpDown,
   FileText,
-  GitBranch,
+  Inbox,
+  LayoutDashboard,
+  Package,
   Settings,
+  Settings2,
+  Ship,
+  SunMoon,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
-const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'nota_debito', 'landed_cost']
-const AGENT_COLORS = ['#1E8C82', '#D97706', '#4F46E5', '#C2410C', '#059669']
+type NavItem = {
+  href: string
+  label: string
+  Icon: ComponentType<{ size?: string | number; strokeWidth?: string | number; className?: string }>
+  counter?: number | null
+  dot?: boolean
+  accent?: boolean
+  tone?: 'review'
+}
 
-const NAV = [
-  { href: '/dashboard/overview', label: 'Resumen',       Icon: LayoutDashboard },
-  { href: '/dashboard/remesas',  label: 'Remesas',       Icon: ArrowLeftRight },
-  { href: '/dashboard/stock',    label: 'Stock',         Icon: Package },
-  { href: '/dashboard/actions',  label: 'Acciones',      Icon: Zap, badgeKey: 'actions' },
-  { href: '/dashboard/agents',    label: 'Agentes',       Icon: Bot },
-  { href: '/dashboard/documentos', label: 'Documentos',  Icon: FileText },
-  { href: '/dashboard/reglas',    label: 'Reglas',       Icon: GitBranch },
+const MAIN_NAV: Array<Omit<NavItem, 'counter'>> = [
+  { href: '/dashboard/overview',   label: 'Resumen',    Icon: LayoutDashboard },
+  { href: '/dashboard/remesas',    label: 'Remesas',    Icon: Ship },
+  { href: '/dashboard/actions',    label: 'Acciones',   Icon: Inbox, accent: true },
+  { href: '/dashboard/stock',      label: 'Stock',      Icon: Package },
+  { href: '/dashboard/agents',     label: 'Agentes',    Icon: Bot, dot: true },
+  { href: '/dashboard/documentos', label: 'Documentos', Icon: FileText, tone: 'review' },
+]
+
+const BOTTOM_NAV: Array<Omit<NavItem, 'counter'>> = [
+  { href: '/dashboard/reglas',   label: 'Reglas',        Icon: Settings2 },
   { href: '/dashboard/settings', label: 'Configuración', Icon: Settings },
 ]
 
+function isActivePath(pathname: string | null, href: string) {
+  if (!pathname) return false
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function NavButton({ item, active }: { item: NavItem; active: boolean }) {
+  const { href, label, Icon, counter, dot, accent, tone } = item
+
+  return (
+    <Link
+      href={href}
+      className={clsx('bf-nav-item', active && 'bf-nav-item-active')}
+    >
+      <Icon size={15} strokeWidth={1.6} className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {dot && (
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ background: 'var(--c-green-500)', boxShadow: '0 0 0 3px var(--c-green-50)' }}
+        />
+      )}
+      {typeof counter === 'number' && counter > 0 && (
+        <span
+          className="min-w-[18px] rounded-full px-[7px] py-px text-center text-[10px] font-semibold tnum"
+          style={{
+            background: accent ? 'var(--accent)' : tone === 'review' ? 'var(--c-amber-100)' : 'var(--bg-muted)',
+            color: accent ? 'var(--fg-on-accent)' : tone === 'review' ? 'var(--c-amber-700)' : 'var(--fg-3)',
+          }}
+        >
+          {counter > 99 ? '99+' : counter}
+        </span>
+      )}
+    </Link>
+  )
+}
+
 export function SidebarNav() {
-  const pathname          = usePathname()
+  const pathname = usePathname()
   const [pendingCount, setPendingCount] = useState<number | null>(null)
+  const [docsReviewCount, setDocsReviewCount] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/actions/pending')
       .then(r => r.json())
       .then(d => setPendingCount(d?.total ?? 0))
       .catch(() => setPendingCount(null))
+
+    fetch('/api/documents?limit=50')
+      .then(r => r.json())
+      .then(d => {
+        const docs = Array.isArray(d?.data) ? d.data : []
+        setDocsReviewCount(docs.filter((doc: { confianza?: number | null }) => doc.confianza == null || doc.confianza < 0.82).length)
+      })
+      .catch(() => setDocsReviewCount(null))
   }, [])
 
+  const initials = (process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'MR').slice(0, 2).toUpperCase()
+
+  const mainNav = MAIN_NAV.map(item => ({
+    ...item,
+    counter:
+      item.href === '/dashboard/actions' ? pendingCount
+      : item.href === '/dashboard/documentos' ? docsReviewCount
+      : null,
+  }))
+
   return (
-    <>
-      {/* Logo */}
-      <div
-        className="flex items-center gap-3 px-4 py-5"
-        style={{ borderColor: 'var(--border-subtle)' }}
+    <aside
+      className="flex h-screen flex-col"
+      style={{
+        width: 'var(--sidebar-w)',
+        background: 'var(--bg-sidebar)',
+        padding: '20px 14px 14px',
+      }}
+    >
+      <Link href="/dashboard/overview" className="flex items-center gap-2 px-1 pb-[18px] no-underline">
+        <Logo size={20} />
+        <span className="text-base font-medium tracking-[-0.018em]" style={{ color: 'var(--fg-1)' }}>
+          bluefishing
+        </span>
+      </Link>
+
+      <button
+        type="button"
+        className="mb-[18px] flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left"
+        style={{
+          background: 'var(--bg-surface)',
+          borderColor: 'var(--border-default)',
+          boxShadow: 'var(--shadow-xs)',
+        }}
       >
         <div
-          className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #2A6CF0, #1E8C82)' }}
-        >
-          <Logo size={24} />
+          className="h-5 w-5 shrink-0 rounded-md"
+          style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #5B6FE0 60%, #2563EB 100%)' }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-xs font-semibold" style={{ color: 'var(--fg-1)' }}>Bluefishing CL</div>
+          <div className="truncate text-[10px]" style={{ color: 'var(--fg-4)' }}>Importadora SpA</div>
         </div>
-        <div>
-          <p className="font-semibold text-[14px] leading-tight tracking-tight" style={{ color: 'var(--fg-1)' }}>
-            bluefishing
-          </p>
-          <p className="text-[10px] leading-tight" style={{ color: 'var(--fg-4)' }}>
-            Importadora SpA
-          </p>
-        </div>
-      </div>
+        <ChevronsUpDown size={12} strokeWidth={1.6} style={{ color: 'var(--fg-4)' }} />
+      </button>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-2 overflow-y-auto">
-        <p className="nav-section-label">Menú</p>
-        <div className="space-y-0.5">
-          {NAV.map(({ href, label, Icon, badgeKey }) => {
-            const isActive = pathname?.startsWith(href)
-            const count    = badgeKey === 'actions' ? pendingCount : null
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={clsx('nav-item', isActive && 'nav-item-active')}
-              >
-                <Icon size={15} className="flex-shrink-0" style={{ opacity: isActive ? 1 : 0.6 }} />
-                <span className="flex-1 text-[13px]">{label}</span>
-                {count != null && count > 0 && (
-                  <span
-                    className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold text-white"
-                    style={{ background: 'var(--accent)' }}
-                  >
-                    {count > 99 ? '99+' : count}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
-        </div>
-
-        {/* Agent heartbeat section */}
-        <p className="nav-section-label mt-2">Sistema</p>
-        <div
-          className="rounded-lg px-3 py-2.5 space-y-2"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
-        >
-          {AGENTS.map((agent, i) => (
-            <div key={agent} className="flex items-center gap-2">
-              <span
-                className="rounded-full animate-pulse-dot flex-shrink-0"
-                style={{ width: 6, height: 6, background: AGENT_COLORS[i], animationDelay: `${i * 280}ms`, display: 'inline-block' }}
-              />
-              <span className="text-[11px] capitalize" style={{ color: 'var(--fg-3)' }}>
-                {agent.replace(/_/g, ' ')}
-              </span>
-            </div>
-          ))}
-        </div>
+      <nav className="flex flex-1 flex-col gap-px">
+        {mainNav.map(item => (
+          <NavButton key={item.href} item={item} active={isActivePath(pathname, item.href)} />
+        ))}
       </nav>
 
-      {/* User footer */}
+      <div className="flex flex-col gap-px pt-2">
+        {BOTTOM_NAV.map(item => (
+          <NavButton key={item.href} item={item} active={isActivePath(pathname, item.href)} />
+        ))}
+      </div>
+
       <div
-        className="px-3 py-3 border-t"
+        className="mt-3 flex items-center gap-2 border-t pt-3"
         style={{ borderColor: 'var(--border-subtle)' }}
       >
-        <div
-          className="flex items-center gap-2.5 p-2 rounded-lg"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
-        >
-          <div
-            className="flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-semibold flex-shrink-0"
-            style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}
-          >
-            {(process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'Ad').slice(0, 2).toUpperCase()}
+        <span className="avatar h-[26px] w-[26px] text-[11px]">{initials}</span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-xs font-semibold" style={{ color: 'var(--fg-1)' }}>
+            {process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'María Rojas'}
           </div>
-          <div className="min-w-0">
-            <p className="text-[12px] font-semibold leading-tight truncate" style={{ color: '#0A0A0A' }}>
-              {process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'Admin'}
-            </p>
-            <p className="text-[10px] leading-tight" style={{ color: '#A3A3A3' }}>
-              {process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Operaciones de Importación'}
-            </p>
-          </div>
+          <div className="text-[10px]" style={{ color: 'var(--fg-4)' }}>Operaciones</div>
         </div>
+        <button
+          type="button"
+          className="inline-flex rounded p-1"
+          style={{ color: 'var(--fg-3)' }}
+          aria-label="Tema"
+          onClick={() => {
+            const el = document.documentElement
+            el.dataset.theme = el.dataset.theme === 'dark' ? '' : 'dark'
+          }}
+        >
+          <SunMoon size={14} strokeWidth={1.6} />
+        </button>
       </div>
-    </>
+    </aside>
   )
 }

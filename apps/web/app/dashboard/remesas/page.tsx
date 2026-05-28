@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { clsx } from 'clsx'
-import { Plus, X, AlertTriangle } from 'lucide-react'
+import { Columns, Download, Filter, Plus, X, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
+import { FilterChip, PageHeader, StatusPill } from '@/components/dashboard/Kit'
 import { createBrowserClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 
@@ -55,6 +55,18 @@ const ESTADO_BADGE: Record<string, 'neutral' | 'pending' | 'warning' | 'success'
   SALDO_FAVOR:         'warning',
 }
 
+const ESTADO_PILL: Record<string, 'idle' | 'pending' | 'review' | 'success' | 'info'> = {
+  INVOICE_RECIBIDO:    'idle',
+  PAGO_PENDIENTE:      'pending',
+  PAGO_PARCIAL:        'pending',
+  PAGO_COMPLETO:       'success',
+  EN_ADUANA:           'review',
+  PROVISION_RECIBIDA:  'info',
+  MERCADERIA_RECIBIDA: 'info',
+  RECONCILIADO:        'success',
+  SALDO_FAVOR:         'review',
+}
+
 const PIPELINE = ['INVOICE_RECIBIDO','PAGO_PENDIENTE','PAGO_PARCIAL','PAGO_COMPLETO','EN_ADUANA','PROVISION_RECIBIDA','MERCADERIA_RECIBIDA','SALDO_FAVOR','RECONCILIADO']
 
 const FILTER_GROUPS = [
@@ -64,8 +76,6 @@ const FILTER_GROUPS = [
   { label: 'En proceso', estados: ['PROVISION_RECIBIDA','MERCADERIA_RECIBIDA','SALDO_FAVOR'] },
   { label: 'Cerradas',   estados: ['RECONCILIADO'] },
 ]
-
-const FLAG: Record<string, string> = { China: '🇨🇳', Japón: '🇯🇵', Japan: '🇯🇵' }
 
 function fmtMonto(n: number, moneda: string) {
   if (moneda === 'JPY') return `¥${n.toLocaleString('ja-JP')}`
@@ -242,7 +252,7 @@ function SidePanel({
         <div className="flex items-start justify-between px-6 py-5 border-b sticky top-0 bg-white z-10" style={{ borderColor: '#E7E5E4' }}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: remesa.proveedor?.pais ? '#A3A3A3' : '#A3A3A3' }}>
-              {FLAG[remesa.proveedor?.pais ?? ''] ?? '🌐'} {remesa.proveedor?.nombre}
+              {remesa.proveedor?.nombre}
             </p>
             <h2 className="text-lg font-bold mono" style={{ color: '#0A0A0A' }}>{remesa.numero_invoice}</h2>
           </div>
@@ -441,40 +451,44 @@ export default function RemesasPage() {
   const attention = remesas.filter(r => r.notas)
 
   return (
-    <div className="p-8 min-h-screen animate-fade-in">
+    <div className="dashboard-page--wide animate-fade-in">
+      <PageHeader
+        title="Remesas"
+        subtitle={`${remesas.length} remesas · ${remesas.filter(r => r.estado !== 'RECONCILIADO').length} activas`}
+        actions={
+          <>
+            <button className="btn btn--secondary">
+              <Download size={13} strokeWidth={1.75} />
+              Exportar CSV
+            </button>
+            <button className="btn btn--primary">
+              <Plus size={13} strokeWidth={1.75} />
+              Nueva remesa
+            </button>
+          </>
+        }
+      />
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Importaciones</p>
-          <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Remesas</h1>
-          <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>
-            {remesas.length} registradas · {remesas.filter(r => r.estado !== 'RECONCILIADO').length} activas
-          </p>
-        </div>
-        <button className="btn-primary">
-          <Plus size={16} />
-          Nueva remesa
-        </button>
-      </div>
-
-      {/* Filter pills */}
-      <div className="flex items-center gap-1.5 mb-6">
+      {/* Filter chips */}
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
         {FILTER_GROUPS.map((g, idx) => {
           const count = g.estados
             ? remesas.filter(r => g.estados!.includes(r.estado)).length
             : remesas.length
           return (
-            <button
+            <FilterChip
               key={g.label}
               onClick={() => setFilter(idx)}
-              className={clsx('pill', filter === idx && 'pill-active')}
+              active={filter === idx}
+              count={count}
             >
               {g.label}
-              <span className="ml-1 opacity-60 text-[10px]">({count})</span>
-            </button>
+            </FilterChip>
           )
         })}
+        <div className="flex-1" />
+        <button className="btn btn--ghost btn--sm"><Filter size={12} strokeWidth={1.75} />Filtros</button>
+        <button className="btn btn--ghost btn--sm"><Columns size={12} strokeWidth={1.75} />Columnas</button>
       </div>
 
       {/* Attention banner */}
@@ -497,7 +511,7 @@ export default function RemesasPage() {
       )}
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden p-0">
         {loading ? (
           <TableSkeleton rows={6} cols={7} />
         ) : filtered.length === 0 ? (
@@ -509,16 +523,16 @@ export default function RemesasPage() {
           />
         ) : (
           <div className="overflow-auto max-h-[70vh]">
-          <table className="w-full">
-            <thead className="sticky top-0 z-10" style={{ background: '#FAFAF9' }}>
-              <tr className="border-b" style={{ borderColor: '#E7E5E4' }}>
-                <th className="th">Factura</th>
-                <th className="th">Proveedor</th>
-                <th className="th text-right">Monto</th>
-                <th className="th">Condición</th>
-                <th className="th">Estado</th>
-                <th className="th">Pipeline</th>
-                <th className="th">Despacho</th>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Factura</th>
+                <th>Proveedor</th>
+                <th className="num">Monto</th>
+                <th>Condición</th>
+                <th>Estado</th>
+                <th>Avance</th>
+                <th>Despacho</th>
               </tr>
             </thead>
             <tbody>
@@ -531,46 +545,46 @@ export default function RemesasPage() {
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(idx * 0.02, 0.3), duration: 0.25 }}
-                    className="table-row cursor-pointer"
+                    className={idx === 0 ? 'is-selected cursor-pointer' : 'cursor-pointer'}
                     onClick={() => setSelected(r)}
                     style={isUrgent ? { borderLeft: '2px solid #DC2626', background: 'rgba(254,242,242,0.3)' } : {}}
                   >
-                    <td className="td">
-                      <span className="mono font-semibold text-xs" style={{ color: '#4F46E5' }}>
+                    <td>
+                      <span className="tnum inline-flex items-center gap-1.5 font-medium" style={{ color: 'var(--fg-1)' }}>
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--agent)' }} />
                         {r.numero_invoice}
                       </span>
                     </td>
-                    <td className="td">
+                    <td>
                       <div className="flex items-center gap-2">
-                        <span>{FLAG[r.proveedor?.pais ?? ''] ?? '🌐'}</span>
                         <div>
-                          <p className="text-xs font-semibold leading-tight" style={{ color: '#0A0A0A' }}>
-                            {r.proveedor?.nombre.split(' ')[0] ?? '—'}
+                          <p className="text-xs font-semibold leading-tight" style={{ color: 'var(--fg-1)' }}>
+                            {r.proveedor?.nombre ?? '—'}
                           </p>
-                          <p className="text-[10px]" style={{ color: '#A3A3A3' }}>{r.proveedor?.pais}</p>
+                          <p className="text-[10px]" style={{ color: 'var(--fg-4)' }}>{r.proveedor?.pais}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="td text-right">
-                      <span className="mono font-bold text-sm" style={{ color: '#0A0A0A' }}>
+                    <td className="num">
+                      <span className="tnum font-semibold">
                         {fmtMonto(r.monto_original, r.moneda_origen)}
                       </span>
                     </td>
-                    <td className="td">
-                      <span className="mono text-xs px-2 py-0.5 rounded-md" style={{ background: '#F5F5F4', color: '#525252', border: '1px solid #E7E5E4' }}>
+                    <td>
+                      <span className="tnum rounded-md px-2 py-0.5 text-xs" style={{ background: 'var(--bg-subtle)', color: 'var(--fg-2)', border: '1px solid var(--border-default)' }}>
                         {r.condicion_pago ?? '—'}
                       </span>
                     </td>
-                    <td className="td">
-                      <Badge variant={ESTADO_BADGE[r.estado] ?? 'neutral'} size="sm">
+                    <td>
+                      <StatusPill variant={ESTADO_PILL[r.estado] ?? 'idle'}>
                         {ESTADO_LABELS[r.estado] ?? r.estado}
-                      </Badge>
+                      </StatusPill>
                     </td>
-                    <td className="td">
+                    <td>
                       <PipelineBar estado={r.estado} />
                     </td>
-                    <td className="td">
-                      <span className="mono text-xs" style={{ color: '#A3A3A3' }}>
+                    <td>
+                      <span className="tnum text-xs" style={{ color: 'var(--fg-4)' }}>
                         {r.numero_despacho ?? '—'}
                       </span>
                     </td>

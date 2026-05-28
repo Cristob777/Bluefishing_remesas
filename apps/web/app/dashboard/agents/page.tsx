@@ -4,15 +4,25 @@ import { useEffect, useState, useRef } from 'react'
 import { createBrowserClient } from '@/lib/supabase'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Badge } from '@/components/ui/Badge'
-import { Bot } from 'lucide-react'
+import {
+  Bot,
+  CircleDollarSign,
+  FileText,
+  Landmark,
+  ReceiptText,
+  Search,
+  ShieldCheck,
+  type LucideIcon,
+} from 'lucide-react'
+import { PageHeader } from '@/components/dashboard/Kit'
 
-const AGENT_META: Record<string, { label: string; icon: string; color: string; bg: string; border: string }> = {
-  invoice_intake:     { label: 'Recepción de Facturas', icon: '📄', color: '#4F46E5', bg: '#EEF2FF',  border: '#C7D2FE' },
-  customs_funds:      { label: 'Fondos de Aduana',      icon: '🏛️', color: '#D97706', bg: '#FFFBEB',  border: '#FDE68A' },
-  din_reconciliation: { label: 'Reconciliación DIN',    icon: '📋', color: '#7C3AED', bg: '#F5F3FF',  border: '#DDD6FE' },
-  nota_debito:        { label: 'Notas AGENSA',          icon: '🧾', color: '#C2410C', bg: '#FFF7ED',  border: '#FED7AA' },
-  landed_cost:        { label: 'Costo Total',           icon: '💰', color: '#059669', bg: '#ECFDF5',  border: '#A7F3D0' },
-  data_enrichment:    { label: 'Enriquecimiento',       icon: '🔍', color: '#0891B2', bg: '#ECFEFF',  border: '#A5F3FC' },
+const AGENT_META: Record<string, { label: string; icon: LucideIcon; color: string; bg: string; border: string }> = {
+  invoice_intake:     { label: 'Recepción de facturas', icon: FileText,         color: '#4F46E5', bg: '#EEF2FF', border: '#C7D2FE' },
+  customs_funds:      { label: 'Fondos de aduana',      icon: Landmark,         color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  din_reconciliation: { label: 'Reconciliación DIN',    icon: ShieldCheck,      color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  nota_debito:        { label: 'Notas AGENSA',          icon: ReceiptText,      color: '#C2410C', bg: '#FFF7ED', border: '#FED7AA' },
+  landed_cost:        { label: 'Costo total',           icon: CircleDollarSign, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  data_enrichment:    { label: 'Enriquecimiento',       icon: Search,           color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
 }
 
 const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'nota_debito', 'landed_cost', 'data_enrichment']
@@ -133,21 +143,22 @@ export default function AgentsPage() {
   const filteredLogs = selectedAgent ? logs.filter(l => l.agent_name === selectedAgent) : logs
 
   return (
-    <div className="p-8 min-h-screen" style={{ background: '#FAFAF9' }}>
+    <div className="dashboard-page--wide min-h-full">
+      <PageHeader
+        title="Agentes"
+        subtitle={`${AGENTS.length} agentes Claude · actividad en tiempo real`}
+        actions={
+          <div className="agent-strip">
+            <Bot size={12} strokeWidth={1.75} />
+            <span>{filteredLogs.length} eventos</span>
+          </div>
+        }
+      />
 
-      {/* Header */}
-      <div className="mb-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Sistema</p>
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Agentes</h1>
-        <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>
-          {AGENTS.length} agentes Claude · actividad en tiempo real
-        </p>
-      </div>
-
-      {/* Agent cards — 6 columns */}
-      <div className="grid grid-cols-6 gap-3 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {AGENTS.map(agent => {
           const meta   = AGENT_META[agent]
+          const Icon   = meta.icon
           const stats  = counts[agent] ?? { success: 0, error: 0 }
           const active = selectedAgent === agent
 
@@ -155,7 +166,7 @@ export default function AgentsPage() {
             <button
               key={agent}
               onClick={() => setSelectedAgent(active ? null : agent)}
-              className="rounded-xl border bg-white p-4 text-left transition-all"
+              className="card p-4 text-left transition-all"
               style={{
                 borderColor: active ? meta.color : meta.border,
                 boxShadow: active
@@ -165,8 +176,8 @@ export default function AgentsPage() {
               }}
             >
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center justify-center w-9 h-9 rounded-lg text-lg" style={{ background: meta.bg }}>
-                  {meta.icon}
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: meta.bg, color: meta.color }}>
+                  <Icon size={16} strokeWidth={1.75} />
                 </div>
                 <span
                   className="w-2 h-2 rounded-full animate-pulse-dot"
@@ -192,8 +203,7 @@ export default function AgentsPage() {
         })}
       </div>
 
-      {/* Live log feed */}
-      <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E7E5E4' }}>
+      <div className="card overflow-hidden p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Feed de eventos</h2>

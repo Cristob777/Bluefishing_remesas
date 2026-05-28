@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
+import { Sparkles } from 'lucide-react'
+import { PageHeader } from '@/components/dashboard/Kit'
 import {
   type PendingAction,
   type InstruccionPagoAction,
@@ -32,16 +34,16 @@ function todayStr() { return new Date().toISOString().split('T')[0] }
 // ── Action meta ───────────────────────────────────────────────────────────────
 
 const META: Record<string, { icon: string; iconBg: string; color: string; border: string; label: string; stage: string }> = {
-  INSTRUCCION_PAGO:      { icon: '📋', iconBg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE', label: 'Instrucción de pago', stage: 'I'   },
-  EMITIR_ORDEN_PAGO:     { icon: '🏦', iconBg: '#F0FDF4', color: '#059669', border: '#A7F3D0', label: 'Orden de pago',       stage: 'II'  },
-  CONFIRMAR_PAGO_BANCARIO:{ icon: '✅', iconBg: '#ECFDF5', color: '#047857', border: '#6EE7B7', label: 'Confirmación banco', stage: 'II' },
-  CONFIRMAR_PROVISION:   { icon: '⚡', iconBg: '#FEF2F2', color: '#DC2626', border: '#FECACA', label: 'Provisión aduanera',  stage: 'III' },
-  INGRESAR_STOCK:        { icon: '📦', iconBg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE', label: 'Ingreso de stock',    stage: 'IV'  },
-  RECLAMO_PROVEEDOR:     { icon: '⚠️', iconBg: '#FFFBEB', color: '#B45309', border: '#FDE68A', label: 'Reclamo a proveedor', stage: 'IV'  },
-  VINCULAR_DESPACHO:     { icon: '🔗', iconBg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE', label: 'Vincular despacho',   stage: 'I-II'},
-  APROBAR_OPERACION:     { icon: '🔒', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Aprobación ≥5M CLP',  stage: 'V'   },
-  REGISTRAR_NOTA_AGENSA: { icon: '🧾', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Nota AGENSA',         stage: 'V'   },
-  ARCHIVAR_EXPEDIENTE:   { icon: '🗄️', iconBg: '#F9FAFB', color: '#374151', border: '#D1D5DB', label: 'Archivar expediente',stage: 'V'  },
+  INSTRUCCION_PAGO:      { icon: 'IP', iconBg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE', label: 'Instrucción de pago', stage: 'I'   },
+  EMITIR_ORDEN_PAGO:     { icon: 'OP', iconBg: '#F0FDF4', color: '#059669', border: '#A7F3D0', label: 'Orden de pago',       stage: 'II'  },
+  CONFIRMAR_PAGO_BANCARIO:{ icon: 'PB', iconBg: '#ECFDF5', color: '#047857', border: '#6EE7B7', label: 'Confirmación banco', stage: 'II' },
+  CONFIRMAR_PROVISION:   { icon: 'PA', iconBg: '#FEF2F2', color: '#DC2626', border: '#FECACA', label: 'Provisión aduanera',  stage: 'III' },
+  INGRESAR_STOCK:        { icon: 'ST', iconBg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE', label: 'Ingreso de stock',    stage: 'IV'  },
+  RECLAMO_PROVEEDOR:     { icon: 'RP', iconBg: '#FFFBEB', color: '#B45309', border: '#FDE68A', label: 'Reclamo a proveedor', stage: 'IV'  },
+  VINCULAR_DESPACHO:     { icon: 'VD', iconBg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE', label: 'Vincular despacho',   stage: 'I-II'},
+  APROBAR_OPERACION:     { icon: 'AP', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Aprobación ≥5M CLP',  stage: 'V'   },
+  REGISTRAR_NOTA_AGENSA: { icon: 'NA', iconBg: '#FFF7ED', color: '#C2410C', border: '#FDBA74', label: 'Nota AGENSA',         stage: 'V'   },
+  ARCHIVAR_EXPEDIENTE:   { icon: 'AR', iconBg: '#F9FAFB', color: '#374151', border: '#D1D5DB', label: 'Archivar expediente',stage: 'V'  },
 }
 
 // ── Shared: invoice detail row ────────────────────────────────────────────────
@@ -508,7 +510,7 @@ function AprobarOperacionForm({ action, onSubmit }: { action: AprobarOperacionAc
       {action.agent_reasoning && (
         <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
           <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-            <span className="text-base">🤖</span>
+            <Sparkles size={14} strokeWidth={1.75} style={{ color: '#0891B2' }} />
             <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Por qué el agente flaggeó esta operación</p>
           </div>
           <div className="px-4 py-3">
@@ -522,11 +524,11 @@ function AprobarOperacionForm({ action, onSubmit }: { action: AprobarOperacionAc
         <div className="flex gap-3">
           <button onClick={() => setDecision('aprobado')} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95"
             style={decision === 'aprobado' ? { background: '#059669', color: '#FFF', border: '2px solid #059669' } : { background: '#FFF', color: '#059669', border: '2px solid #A7F3D0' }}>
-            ✓ Aprobar
+            Aprobar
           </button>
           <button onClick={() => setDecision('rechazado')} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95"
             style={decision === 'rechazado' ? { background: '#DC2626', color: '#FFF', border: '2px solid #DC2626' } : { background: '#FFF', color: '#DC2626', border: '2px solid #FECACA' }}>
-            ✗ Rechazar
+            Rechazar
           </button>
         </div>
       </div>
@@ -832,16 +834,12 @@ export default function ActionsPage() {
   }
 
   return (
-    <div className="p-8 space-y-6 min-h-screen animate-fade-in">
-
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Operaciones</p>
-          <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Centro de Acciones</h1>
-          <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>Ventanilla de decisión humana · 10 flujos cubiertos</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="dashboard-page--wide min-h-full animate-fade-in">
+      <PageHeader
+        title="Acciones"
+        subtitle="Ventanilla de decisión humana · pagos, aduana, stock y cierre"
+        actions={
+          <>
           <span
             className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
             style={pending > 0 ? { background: '#F5F5F4', color: '#525252', border: '1px solid #E7E5E4' } : { background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
@@ -854,8 +852,9 @@ export default function ActionsPage() {
               {urgent} urgente{urgent > 1 ? 's' : ''}
             </span>
           )}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Loading state */}
       {loading && (
@@ -886,7 +885,7 @@ export default function ActionsPage() {
 
               return (
                 <div key={action.id}
-                  className={clsx('rounded-2xl border bg-white overflow-hidden transition-all duration-300', isDone && 'opacity-50')}
+                  className={clsx('rounded-xl border bg-white overflow-hidden transition-all duration-300', isDone && 'opacity-50')}
                   style={{
                     borderColor: action.urgente && !isDone ? '#FECACA' : isExpanded ? meta.border : '#E5E7EB',
                     boxShadow: isExpanded
@@ -900,13 +899,13 @@ export default function ActionsPage() {
                   )}
 
                   <button
-                    className="w-full flex items-center gap-4 p-5 text-left transition-colors hover:bg-gray-50 disabled:cursor-default"
+                    className="w-full flex items-center gap-4 p-4 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default"
                     onClick={() => !isDone && !isProc && setExpandedId(isExpanded ? null : action.id)}
                     disabled={isDone || isProc}
                   >
-                    <div className="flex items-center justify-center w-11 h-11 rounded-xl text-xl flex-shrink-0"
-                         style={{ background: meta.iconBg }}>
-                      {isDone ? '✅' : isProc ? '⏳' : meta.icon}
+                    <div className="tnum flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold"
+                         style={{ background: meta.iconBg, color: meta.color }}>
+                      {isDone ? 'OK' : isProc ? '...' : meta.icon}
                     </div>
 
                     <div className="flex-1 min-w-0">

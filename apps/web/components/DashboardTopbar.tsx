@@ -95,8 +95,7 @@ export function DashboardTopbar() {
         </button>
 
         <div
-          className="flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-semibold"
-          style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}
+          className="avatar h-[30px] w-[30px] text-xs"
         >
           {initials}
         </div>

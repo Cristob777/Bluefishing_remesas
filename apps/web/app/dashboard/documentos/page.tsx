@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { KpiCard, PageHeader } from '@/components/dashboard/Kit'
 import {
   ArrowRight,
   Bot,
@@ -241,21 +242,16 @@ export default function DocumentosPage() {
   const selectedFields = fieldEntries(selected)
 
   return (
-    <div className="min-h-full px-5 py-5 lg:px-7">
-      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="page-eyebrow">Archivo operacional</p>
-          <h1 className="page-title">Documentos</h1>
-          <p className="page-subtitle">
-            Bandeja de documentos procesados por agentes, con evidencia de extracción y trazabilidad Document AI.
-          </p>
-        </div>
+    <div className="dashboard-page--wide min-h-full">
+      <PageHeader
+        title="Documentos"
+        subtitle="Bandeja de documentos procesados por agentes, con evidencia de extracción y trazabilidad Document AI."
+      />
 
-        <div className="grid grid-cols-3 gap-2 sm:min-w-[420px]">
-          <SummaryMetric label="Procesados" value={docs.length} />
-          <SummaryMetric label="Revisión" value={reviewCount} tone="warn" />
-          <SummaryMetric label="DocAI" value={docAiCount} tone="agent" />
-        </div>
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KpiCard label="Procesados" value={docs.length} />
+        <KpiCard label="Revisión" value={reviewCount} tone={reviewCount > 0 ? 'warning' : 'success'} />
+        <KpiCard label="Document AI" value={docAiCount} />
       </div>
 
       <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -323,7 +319,7 @@ export default function DocumentosPage() {
       </div>
 
       <div className="grid min-h-[620px] gap-4 xl:grid-cols-[minmax(380px,0.95fr)_minmax(520px,1.35fr)]">
-        <section className="min-w-0 overflow-hidden rounded-xl border bg-white" style={{ borderColor: 'var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
+        <section className="card min-w-0 overflow-hidden p-0">
           <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
             <div className="flex items-center gap-2">
               <Inbox size={16} strokeWidth={1.75} style={{ color: 'var(--fg-3)' }} />
@@ -468,7 +464,7 @@ function DocumentRow({ doc, active, onClick }: { doc: Documento; active: boolean
 function DocumentDetail({ doc, fields }: { doc: Documento | null; fields: [string, unknown][] }) {
   if (!doc) {
     return (
-      <section className="flex min-h-[420px] items-center justify-center rounded-xl border bg-white" style={{ borderColor: 'var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
+      <section className="card flex min-h-[420px] items-center justify-center">
         <EmptyState
           icon={<FileSearch size={20} style={{ color: 'var(--fg-4)' }} />}
           title="Selecciona un documento"
@@ -485,7 +481,7 @@ function DocumentDetail({ doc, fields }: { doc: Documento | null; fields: [strin
   const SuggestionIcon = suggestion.Icon
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border bg-white" style={{ borderColor: 'var(--border-default)', boxShadow: 'var(--shadow-sm)' }}>
+    <section className="card min-w-0 overflow-hidden p-0">
       <div className="flex items-start justify-between gap-4 border-b px-5 py-4" style={{ borderColor: 'var(--border-subtle)' }}>
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">

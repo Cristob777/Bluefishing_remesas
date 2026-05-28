@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, type ComponentType } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -11,7 +11,7 @@ import {
 interface NavItem {
   label: string
   href:  string
-  icon:  React.ComponentType<{ size?: string | number }>
+  icon:  ComponentType<{ size?: string | number }>
   group: 'navigation' | 'action'
 }
 

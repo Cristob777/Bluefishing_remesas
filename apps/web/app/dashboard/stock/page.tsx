@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Badge } from '@/components/ui/Badge'
-import { Package } from 'lucide-react'
+import { Download, Filter, Package } from 'lucide-react'
 import { CountModal } from '@/components/stock/CountModal'
+import { KpiCard, PageHeader, StatusPill } from '@/components/dashboard/Kit'
 import type { StockRecepcion, StockItem } from '@/types'
 
 type Recepcion = StockRecepcion & {
@@ -19,10 +19,10 @@ type FlatItem = StockItem & {
   fecha_recepcion: string
 }
 
-const ESTADO_BADGE: Record<string, 'pending' | 'success' | 'purple' | 'info'> = {
+const ESTADO_PILL: Record<string, 'pending' | 'success' | 'review' | 'info'> = {
   PENDIENTE:       'pending',
   INGRESADO_BSALE: 'success',
-  CON_DIFERENCIAS: 'purple',
+  CON_DIFERENCIAS: 'review',
   CONTADO:         'info',
 }
 
@@ -78,48 +78,39 @@ export default function StockPage() {
     }))
   )
 
-  // Stat card values
   const totalSKUs     = flatItems.length
   const conDiferencias = flatItems.filter(i => (i.diferencia ?? 0) !== 0).length
   const enBsale       = recepciones.filter(r => r.estado === 'INGRESADO_BSALE').length
   const pendientes    = recepciones.filter(r => r.estado === 'PENDIENTE').length
 
-  const STAT_CARDS = [
-    { label: 'Total SKUs',       value: totalSKUs,      accent: '#4F46E5' },
-    { label: 'Con diferencias',  value: conDiferencias, accent: conDiferencias > 0 ? '#DC2626' : '#059669' },
-    { label: 'Ingresados Bsale', value: enBsale,        accent: '#059669' },
-    { label: 'Pendientes',       value: pendientes,     accent: pendientes > 0 ? '#D97706' : '#059669' },
-  ]
-
   return (
-    <div className="p-8 min-h-screen" style={{ background: '#FAFAF9' }}>
+    <div className="dashboard-page--wide min-h-full">
+      <PageHeader
+        title="Stock y recepción"
+        subtitle={`${recepciones.length} recepciones · ${totalSKUs} SKUs en total`}
+        actions={
+          <>
+            <button className="btn btn--secondary" type="button">
+              <Filter size={14} strokeWidth={1.75} />
+              Filtrar
+            </button>
+            <button className="btn btn--primary" type="button">
+              <Download size={14} strokeWidth={1.75} />
+              Exportar
+            </button>
+          </>
+        }
+      />
 
-      {/* Header */}
-      <div className="mb-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Inventario</p>
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Stock y Recepción</h1>
-        <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>
-          {recepciones.length} recepciones · {totalSKUs} SKUs en total
-        </p>
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Total SKUs" value={totalSKUs} />
+        <KpiCard label="Con diferencias" value={conDiferencias} tone={conDiferencias > 0 ? 'danger' : 'success'} />
+        <KpiCard label="Ingresados Bsale" value={enBsale} tone="success" />
+        <KpiCard label="Pendientes" value={pendientes} tone={pendientes > 0 ? 'warning' : 'success'} />
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {STAT_CARDS.map(s => (
-          <div
-            key={s.label}
-            className="bg-white rounded-xl p-4 border"
-            style={{ borderColor: '#E7E5E4', borderLeft: `3px solid ${s.accent}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-          >
-            <p className="text-[28px] font-extrabold mono leading-none mb-1" style={{ color: s.accent }}>{s.value}</p>
-            <p className="text-xs font-semibold" style={{ color: '#525252' }}>{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Table */}
       {loading ? (
-        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E7E5E4' }}>
+        <div className="card overflow-hidden p-0">
           {[0,1,2,3,4].map(i => (
             <div key={i} className="flex items-center gap-4 px-5 py-3.5 border-b" style={{ borderColor: '#F5F5F4' }}>
               <div className="h-3 w-24 rounded animate-pulse" style={{ background: '#F5F5F4' }} />
@@ -137,18 +128,12 @@ export default function StockPage() {
           action={{ label: 'Ver remesas activas', href: '/dashboard/remesas' }}
         />
       ) : (
-        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E7E5E4' }}>
-          <table className="w-full text-[12px]">
+        <div className="card overflow-hidden p-0">
+          <table className="tbl">
             <thead className="sticky top-0 z-10 bg-white">
-              <tr style={{ borderBottom: '1px solid #E7E5E4' }}>
+              <tr>
                 {['SKU', 'Descripción', 'Proveedor', 'Factura', 'Fact.', 'Recibido', 'Diferencia', 'Estado', ''].map(h => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: '#A3A3A3', background: '#FAFAF9' }}
-                  >
-                    {h}
-                  </th>
+                  <th key={h}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -187,9 +172,9 @@ export default function StockPage() {
                     }
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={ESTADO_BADGE[item.recepcion.estado] ?? 'neutral'} size="sm">
+                    <StatusPill variant={ESTADO_PILL[item.recepcion.estado] ?? 'idle'}>
                       {ESTADO_LABEL[item.recepcion.estado] ?? item.recepcion.estado}
-                    </Badge>
+                    </StatusPill>
                   </td>
                   <td className="px-4 py-3">
                     {item.recepcion.estado === 'PENDIENTE' && (
