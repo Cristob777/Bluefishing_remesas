@@ -11,6 +11,8 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 // ── Security headers ──────────────────────────────────────────────────────────
 
 function buildSecurityHeaders(nonce: string) {
+  const devScriptPolicy = process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''
+
   return {
     'X-Content-Type-Options':    'nosniff',
     'X-Frame-Options':           'DENY',
@@ -21,7 +23,7 @@ function buildSecurityHeaders(nonce: string) {
     'X-DNS-Prefetch-Control':    'off',
     'Content-Security-Policy': [
       "default-src 'self'",
-      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'`,
+      `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'${devScriptPolicy}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' https://fonts.gstatic.com",

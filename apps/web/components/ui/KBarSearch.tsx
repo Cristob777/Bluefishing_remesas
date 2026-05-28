@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Search, ArrowRight, LayoutDashboard, ArrowLeftRight, Package, Zap, Bot,
-  Mail, FileText,
+  Mail, FileText, GitBranch, Settings,
 } from 'lucide-react'
 
 interface NavItem {
@@ -21,8 +21,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Stock',            href: '/dashboard/stock',     icon: Package,         group: 'navigation' },
   { label: 'Acciones',         href: '/dashboard/actions',   icon: Zap,             group: 'navigation' },
   { label: 'Agentes',          href: '/dashboard/agents',    icon: Bot,             group: 'navigation' },
+  { label: 'Documentos',       href: '/dashboard/documentos', icon: FileText,        group: 'navigation' },
+  { label: 'Reglas',           href: '/dashboard/reglas',    icon: GitBranch,       group: 'navigation' },
+  { label: 'Configuración',    href: '/dashboard/settings',  icon: Settings,        group: 'navigation' },
   { label: 'Conectar Gmail',   href: '/api/gmail-auth',      icon: Mail,            group: 'action' },
-  { label: 'Configurar Gmail filters', href: '/api/setup/gmail-filters', icon: FileText, group: 'action' },
+  { label: 'Configurar filtros Gmail', href: '/api/setup/gmail-filters', icon: FileText, group: 'action' },
 ]
 
 interface RemesaHit {
@@ -132,28 +135,28 @@ export function KBarSearch({ open, onClose }: KBarSearchProps) {
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
             className="w-full max-w-lg mx-4 rounded-2xl overflow-hidden"
             style={{
-              background: '#FFFFFF',
-              border: '1px solid #E7E5E4',
-              boxShadow: '0 24px 48px rgba(0,0,0,0.15)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-xl)',
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b" style={{ borderColor: '#E7E5E4' }}>
-              <Search size={16} style={{ color: '#A3A3A3', flexShrink: 0 }} />
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+              <Search size={16} style={{ color: 'var(--fg-4)', flexShrink: 0 }} />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Buscar página, factura o acción..."
+                placeholder="Buscar remesa, factura, DIN..."
                 className="flex-1 text-sm bg-transparent focus:outline-none"
-                style={{ color: '#0A0A0A' }}
+                style={{ color: 'var(--fg-1)' }}
               />
-              <kbd className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#F5F5F4', color: '#A3A3A3', border: '1px solid #E7E5E4' }}>ESC</kbd>
+              <kbd className="text-[10px] px-1.5 py-0.5 rounded">ESC</kbd>
             </div>
 
             <div className="py-2 max-h-[50vh] overflow-y-auto">
               {results.length === 0 ? (
-                <p className="px-4 py-6 text-center text-sm" style={{ color: '#A3A3A3' }}>Sin resultados</p>
+                <p className="px-4 py-6 text-center text-sm" style={{ color: 'var(--fg-4)' }}>Sin resultados</p>
               ) : (
                 <>
                   {navResults.length > 0 && (
@@ -169,15 +172,15 @@ export function KBarSearch({ open, onClose }: KBarSearchProps) {
               )}
             </div>
 
-            <div className="px-4 py-2.5 border-t flex items-center gap-4" style={{ borderColor: '#E7E5E4', background: '#FAFAF9' }}>
-              <span className="text-[10px] flex items-center gap-1" style={{ color: '#A3A3A3' }}>
-                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#F5F5F4', border: '1px solid #E7E5E4' }}>↑↓</kbd> navegar
+            <div className="px-4 py-2.5 border-t flex items-center gap-4" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-subtle)' }}>
+              <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--fg-4)' }}>
+                <kbd className="px-1 py-0.5 rounded text-[9px]">↑↓</kbd> navegar
               </span>
-              <span className="text-[10px] flex items-center gap-1" style={{ color: '#A3A3A3' }}>
-                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#F5F5F4', border: '1px solid #E7E5E4' }}>↵</kbd> ir
+              <span className="text-[10px] flex items-center gap-1" style={{ color: 'var(--fg-4)' }}>
+                <kbd className="px-1 py-0.5 rounded text-[9px]">↵</kbd> ir
               </span>
-              <span className="ml-auto text-[10px]" style={{ color: '#A3A3A3' }}>
-                <kbd className="px-1 py-0.5 rounded text-[9px]" style={{ background: '#F5F5F4', border: '1px solid #E7E5E4' }}>⌘K</kbd>
+              <span className="ml-auto text-[10px]" style={{ color: 'var(--fg-4)' }}>
+                <kbd className="px-1 py-0.5 rounded text-[9px]">⌘K</kbd>
               </span>
             </div>
           </motion.div>
@@ -199,7 +202,7 @@ function ResultGroup({
 }) {
   return (
     <>
-      <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#A3A3A3' }}>
+      <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--fg-4)' }}>
         {label}
       </p>
       {items.map((r, i) => {
@@ -216,15 +219,15 @@ function ResultGroup({
             onMouseEnter={() => setSelectedIdx(absIdx)}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors duration-100"
             style={{
-              background: active ? '#EEF2FF' : 'transparent',
-              color: active ? '#4F46E5' : '#525252',
+              background: active ? 'var(--bg-active)' : 'transparent',
+              color: active ? 'var(--accent)' : 'var(--fg-2)',
             }}
           >
             <Icon size={15} />
             <span className="flex-1 text-left">
               <span className="font-medium">{title}</span>
               {subtitle && (
-                <span className="ml-2 text-[11px]" style={{ color: '#A3A3A3' }}>· {subtitle}</span>
+                <span className="ml-2 text-[11px]" style={{ color: 'var(--fg-4)' }}>· {subtitle}</span>
               )}
             </span>
             {active && <ArrowRight size={14} />}

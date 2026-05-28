@@ -73,21 +73,78 @@ async function verifyBearer(token: string): Promise<AuthUser | null> {
   return { id: data.user.id, email, role }
 }
 
-// Cookie auth for requests originating from the browser dashboard
-async function verifyCookie(req: NextRequest): Promise<AuthUser | null> {
-  const cookies    = req.headers.get('cookie') ?? ''
-  const tokenMatch = cookies.match(/sb-[^=]+=([^;]+)/)
-  if (!tokenMatch) return null
-
+function tryExtractTokenFromValue(value: string): string | null {
   try {
-    const raw    = decodeURIComponent(tokenMatch[1])
-    const parsed = JSON.parse(raw)
-    const token  = Array.isArray(parsed) ? parsed[0]?.access_token : parsed?.access_token
-    if (!token) return null
-    return verifyBearer(token)
+    const decoded = decodeURIComponent(value)
+
+    if (decoded.startsWith('base64-')) {
+      const json = Buffer.from(decoded.slice('base64-'.length), 'base64').toString('utf-8')
+      const parsed = JSON.parse(json)
+      const session = Array.isArray(parsed) ? parsed[0] : parsed
+      return session?.access_token ?? null
+    }
+
+    if (decoded.startsWith('{') || decoded.startsWith('[')) {
+      const parsed = JSON.parse(decoded)
+      const session = Array.isArray(parsed) ? parsed[0] : parsed
+      return session?.access_token ?? null
+    }
+
+    if (decoded.startsWith('eyJ')) return decoded
+    return null
   } catch {
     return null
   }
+}
+
+function collectSupabaseAuthCookieValues(cookieHeader: string): string[] {
+  const authCookies = new Map<string, string>()
+  const chunks      = new Map<string, Map<number, string>>()
+
+  for (const raw of cookieHeader.split(';')) {
+    const cookie = raw.trim()
+    const eqIdx = cookie.indexOf('=')
+    if (eqIdx === -1) continue
+
+    const name = cookie.slice(0, eqIdx).trim()
+    const value = cookie.slice(eqIdx + 1).trim()
+    if (!value || !/^sb-.+(auth-token|access-token)/.test(name)) continue
+
+    const chunkMatch = name.match(/^(.+)\.(\d+)$/)
+    if (chunkMatch) {
+      const base = chunkMatch[1]
+      const idx = Number(chunkMatch[2])
+      if (!chunks.has(base)) chunks.set(base, new Map())
+      chunks.get(base)!.set(idx, value)
+    } else {
+      authCookies.set(name, value)
+    }
+  }
+
+  for (const [base, parts] of chunks) {
+    const ordered = [...parts.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, value]) => value)
+    authCookies.set(base, ordered.join(''))
+  }
+
+  return [...authCookies.values()]
+}
+
+// Cookie auth for requests originating from the browser dashboard
+async function verifyCookie(req: NextRequest): Promise<AuthUser | null> {
+  const cookieHeader = req.headers.get('cookie') ?? ''
+  if (!cookieHeader) return null
+
+  for (const value of collectSupabaseAuthCookieValues(cookieHeader)) {
+    const token = tryExtractTokenFromValue(value)
+    if (!token) continue
+
+    const user = await verifyBearer(token)
+    if (user) return user
+  }
+
+  return null
 }
 
 // CSRF guard: mutations via cookie auth must originate from our domain.
@@ -106,6 +163,12 @@ function isCsrfSafe(req: NextRequest, usingBearer: boolean): boolean {
       try { return new URL(referer).host === host } catch { return false }
     }
     return true // server-to-server call without browser headers — allow
+  }
+
+  try {
+    if (new URL(origin).host === req.nextUrl.host) return true
+  } catch {
+    return false
   }
 
   return ALLOWED_ORIGINS.has(origin)

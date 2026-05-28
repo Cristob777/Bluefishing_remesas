@@ -13,13 +13,11 @@ import {
   FileText,
   GitBranch,
   Settings,
-  Command,
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
-import { KBarSearch, useKBar } from '@/components/ui/KBarSearch'
 
 const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'nota_debito', 'landed_cost']
-const AGENT_COLORS = ['#4F46E5', '#D97706', '#7C3AED', '#C2410C', '#059669']
+const AGENT_COLORS = ['#1E8C82', '#D97706', '#4F46E5', '#C2410C', '#059669']
 
 const NAV = [
   { href: '/dashboard/overview', label: 'Resumen',       Icon: LayoutDashboard },
@@ -34,7 +32,6 @@ const NAV = [
 
 export function SidebarNav() {
   const pathname          = usePathname()
-  const { open, setOpen } = useKBar()
   const [pendingCount, setPendingCount] = useState<number | null>(null)
 
   useEffect(() => {
@@ -46,25 +43,23 @@ export function SidebarNav() {
 
   return (
     <>
-      <KBarSearch open={open} onClose={() => setOpen(false)} />
-
       {/* Logo */}
       <div
-        className="flex items-center gap-3 px-5 py-5 border-b"
-        style={{ borderColor: '#E7E5E4' }}
+        className="flex items-center gap-3 px-4 py-5"
+        style={{ borderColor: 'var(--border-subtle)' }}
       >
         <div
-          className="flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #4F46E5, #4338CA)' }}
+          className="flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg, #2A6CF0, #1E8C82)' }}
         >
           <Logo size={24} />
         </div>
         <div>
-          <p className="font-bold text-[13px] leading-tight tracking-tight" style={{ color: '#0A0A0A' }}>
-            BLUEFISHING
+          <p className="font-semibold text-[14px] leading-tight tracking-tight" style={{ color: 'var(--fg-1)' }}>
+            bluefishing
           </p>
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] leading-tight" style={{ color: '#A3A3A3' }}>
-            Agentes de IA
+          <p className="text-[10px] leading-tight" style={{ color: 'var(--fg-4)' }}>
+            Importadora SpA
           </p>
         </div>
       </div>
@@ -86,8 +81,8 @@ export function SidebarNav() {
                 <span className="flex-1 text-[13px]">{label}</span>
                 {count != null && count > 0 && (
                   <span
-                    className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
-                    style={{ background: '#DC2626', boxShadow: '0 1px 3px rgba(220,38,38,0.3)' }}
+                    className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold text-white"
+                    style={{ background: 'var(--accent)' }}
                   >
                     {count > 99 ? '99+' : count}
                   </span>
@@ -101,7 +96,7 @@ export function SidebarNav() {
         <p className="nav-section-label mt-2">Sistema</p>
         <div
           className="rounded-lg px-3 py-2.5 space-y-2"
-          style={{ background: '#FAFAF9', border: '1px solid #E7E5E4' }}
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}
         >
           {AGENTS.map((agent, i) => (
             <div key={agent} className="flex items-center gap-2">
@@ -109,7 +104,7 @@ export function SidebarNav() {
                 className="rounded-full animate-pulse-dot flex-shrink-0"
                 style={{ width: 6, height: 6, background: AGENT_COLORS[i], animationDelay: `${i * 280}ms`, display: 'inline-block' }}
               />
-              <span className="text-[11px] capitalize" style={{ color: '#A3A3A3' }}>
+              <span className="text-[11px] capitalize" style={{ color: 'var(--fg-3)' }}>
                 {agent.replace(/_/g, ' ')}
               </span>
             </div>
@@ -117,33 +112,18 @@ export function SidebarNav() {
         </div>
       </nav>
 
-      {/* Cmd+K hint */}
-      <button
-        onClick={() => setOpen(true)}
-        className="mx-3 mb-3 flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-150"
-        style={{
-          background: '#F5F5F4',
-          border: '1px solid #E7E5E4',
-          color: '#A3A3A3',
-        }}
-      >
-        <Command size={12} />
-        <span className="text-[11px] flex-1 text-left">Búsqueda rápida</span>
-        <kbd className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#E7E5E4', color: '#A3A3A3' }}>⌘K</kbd>
-      </button>
-
       {/* User footer */}
       <div
-        className="px-5 py-4 border-t"
-        style={{ borderColor: '#E7E5E4' }}
+        className="px-3 py-3 border-t"
+        style={{ borderColor: 'var(--border-subtle)' }}
       >
         <div
           className="flex items-center gap-2.5 p-2 rounded-lg"
-          style={{ background: '#FAFAF9' }}
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
         >
           <div
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', color: '#FFF' }}
+            className="flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-semibold flex-shrink-0"
+            style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}
           >
             {(process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'Ad').slice(0, 2).toUpperCase()}
           </div>

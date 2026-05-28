@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { LoginButton } from '@/components/ui/LoginButton'
+import { Logo } from '@/components/ui/Logo'
 
 async function signIn(formData: FormData) {
   'use server'
@@ -9,13 +10,21 @@ async function signIn(formData: FormData) {
   const email    = formData.get('email')    as string
   const password = formData.get('password') as string
   const next     = (formData.get('next') as string) ?? '/dashboard/overview'
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    ''
+
+  if (!supabaseUrl || !supabaseKey) {
+    redirect(`/login?error=config&next=${encodeURIComponent(next)}`)
+  }
 
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll:  () => cookieStore.getAll(),
@@ -43,6 +52,7 @@ export default async function LoginPage({
   const params = await searchParams
   const next   = params.next ?? '/dashboard/overview'
   const hasErr = params.error === 'invalid'
+  const hasConfigErr = params.error === 'config'
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4"
@@ -54,7 +64,7 @@ export default async function LoginPage({
         <div className="mb-7 text-center">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl mx-auto mb-4"
             style={{ background: 'var(--accent)' }}>
-            🎣
+            <Logo size={24} />
           </div>
           <h1 className="text-lg font-semibold m-0" style={{ color: 'var(--text-primary)' }}>
             Agentes de Importación
@@ -92,6 +102,12 @@ export default async function LoginPage({
           {hasErr && (
             <p className="text-[13px] m-0" style={{ color: 'var(--danger)' }}>
               Correo o contraseña inválidos
+            </p>
+          )}
+
+          {hasConfigErr && (
+            <p className="text-[13px] m-0" style={{ color: 'var(--danger)' }}>
+              Falta configurar Supabase en el entorno local. En Vercel usa las variables del proyecto.
             </p>
           )}
 
