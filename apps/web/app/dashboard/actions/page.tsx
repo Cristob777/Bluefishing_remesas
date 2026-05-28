@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { Sparkles } from 'lucide-react'
-import { PageHeader } from '@/components/dashboard/Kit'
+import { AgentStrip, PageHeader } from '@/components/dashboard/Kit'
 import {
   type PendingAction,
   type InstruccionPagoAction,
@@ -744,12 +744,30 @@ type ActionStatus = 'pending' | 'completed' | 'error'
 
 interface ActionState { action: PendingAction; status: ActionStatus; errorMsg?: string }
 
-const STAGE_ORDER = ['I', 'I-II', 'II', 'III', 'IV', 'V']
+type ActionFilter = 'todas' | 'pago' | 'aduana' | 'revision' | 'stock' | 'cierre'
+
+function actionFilterFor(type: PendingAction['type']): Exclude<ActionFilter, 'todas'> {
+  if (type === 'INGRESAR_STOCK' || type === 'RECLAMO_PROVEEDOR') return 'stock'
+  if (type === 'CONFIRMAR_PROVISION' || type === 'REGISTRAR_NOTA_AGENSA') return 'aduana'
+  if (type === 'APROBAR_OPERACION') return 'revision'
+  if (type === 'ARCHIVAR_EXPEDIENTE') return 'cierre'
+  return 'pago'
+}
+
+const FILTER_LABELS: Record<ActionFilter, string> = {
+  todas: 'Todas',
+  pago: 'Pagos',
+  aduana: 'Aduana',
+  revision: 'Revisiones',
+  stock: 'Stock',
+  cierre: 'Cierre',
+}
 
 export default function ActionsPage() {
   const [items, setItems]               = useState<ActionState[]>([])
   const [loading, setLoading]           = useState(true)
-  const [expandedId, setExpandedId]     = useState<string | null>(null)
+  const [selectedId, setSelectedId]     = useState<string | null>(null)
+  const [filter, setFilter]             = useState<ActionFilter>('todas')
   const [processingId, setProcessingId] = useState<string | null>(null)
 
   // Fetch pending actions from real API
@@ -757,7 +775,11 @@ export default function ActionsPage() {
     setLoading(true)
     fetch('/api/actions/pending')
       .then(r => r.json())
-      .then(d => setItems((d.actions ?? []).map((a: PendingAction) => ({ action: a, status: 'pending' as const }))))
+      .then(d => {
+        const next: ActionState[] = (d.actions ?? []).map((a: PendingAction) => ({ action: a, status: 'pending' as const }))
+        setItems(next)
+        setSelectedId(prev => prev && next.some(i => i.action.id === prev) ? prev : next[0]?.action.id ?? null)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }
@@ -780,7 +802,7 @@ export default function ActionsPage() {
         throw new Error(body.error ?? res.statusText)
       }
       setItems(prev => prev.map(i => i.action.id === id ? { ...i, status: 'completed' } : i))
-      setExpandedId(null)
+      setSelectedId(null)
       toast.success('Acción completada', { description: 'Registrado en el sistema.' })
       // Reload after a brief moment so the completed action disappears
       setTimeout(loadActions, 1200)
@@ -818,19 +840,49 @@ export default function ActionsPage() {
     }
   }
 
-  // Group by stage
-  const byStage = STAGE_ORDER.map(stage => ({
-    stage,
-    actions: items.filter(i => META[i.action.type]?.stage === stage),
-  })).filter(g => g.actions.length > 0)
+  const tabs = useMemo(() => {
+    const keys: ActionFilter[] = ['todas', 'pago', 'aduana', 'revision', 'stock', 'cierre']
+    return keys.map(key => ({
+      key,
+      label: FILTER_LABELS[key],
+      count: key === 'todas' ? items.length : items.filter(i => actionFilterFor(i.action.type) === key).length,
+    }))
+  }, [items])
 
-  const STAGE_LABELS: Record<string, string> = {
-    'I':    'Etapa I — Factura e instrucción',
-    'I-II': 'Etapa I–II — Despacho aduanero',
-    'II':   'Etapa II — Pagos al proveedor',
-    'III':  'Etapa III — Provisión aduanera',
-    'IV':   'Etapa IV — Recepción de mercadería',
-    'V':    'Etapa V — Cierre y reconciliación',
+  const filteredItems = useMemo(
+    () => filter === 'todas' ? items : items.filter(i => actionFilterFor(i.action.type) === filter),
+    [filter, items]
+  )
+
+  useEffect(() => {
+    if (loading) return
+    if (filteredItems.length === 0) {
+      if (selectedId) setSelectedId(null)
+      return
+    }
+    if (!selectedId || !filteredItems.some(i => i.action.id === selectedId)) {
+      setSelectedId(filteredItems[0].action.id)
+    }
+  }, [filteredItems, loading, selectedId])
+
+  const selectedState = filteredItems.find(i => i.action.id === selectedId) ?? filteredItems[0] ?? null
+
+  function actionReference(action: PendingAction) {
+    const data = action as unknown as Record<string, unknown>
+    for (const key of ['invoice', 'numero_despacho', 'numero_orden', 'remesa_id']) {
+      const value = data[key]
+      if (typeof value === 'string' && value.trim()) {
+        return key === 'remesa_id' ? value.slice(0, 8) : value
+      }
+    }
+    return action.type.replace(/_/g, ' ')
+  }
+
+  function actionReasoning(action: PendingAction) {
+    const data = action as unknown as Record<string, unknown>
+    return typeof data.agent_reasoning === 'string' && data.agent_reasoning.trim()
+      ? data.agent_reasoning
+      : 'El agente dejó esta acción pendiente porque requiere confirmación humana antes de continuar el flujo operativo.'
   }
 
   return (
@@ -856,109 +908,160 @@ export default function ActionsPage() {
         }
       />
 
-      {/* Loading state */}
       {loading && (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => <div key={i} className="skeleton h-16 rounded-xl" />)}
         </div>
       )}
 
-      {/* Stage groups */}
-      {!loading && byStage.map(({ stage, actions: stageActions }) => (
-        <div key={stage}>
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em]" style={{ color: '#A3A3A3' }}>
-              {STAGE_LABELS[stage] ?? `Etapa ${stage}`}
-            </span>
-            <div className="flex-1 h-px" style={{ background: '#E7E5E4' }} />
-            <span className="text-[10px] font-bold mono" style={{ color: '#A3A3A3' }}>
-              {stageActions.filter(a => a.status === 'pending').length}/{stageActions.length}
-            </span>
-          </div>
-
-          <div className="space-y-2.5">
-            {stageActions.map(({ action, status, errorMsg }) => {
-              const meta       = META[action.type]
-              const isExpanded = expandedId === action.id
-              const isDone     = status === 'completed'
-              const isProc     = processingId === action.id
-
+      {!loading && pending > 0 && (
+        <>
+          <div className="mb-[18px] flex gap-1 border-b" style={{ borderColor: 'var(--border-default)' }}>
+            {tabs.map(tab => {
+              const active = tab.key === filter
               return (
-                <div key={action.id}
-                  className={clsx('rounded-xl border bg-white overflow-hidden transition-all duration-300', isDone && 'opacity-50')}
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setFilter(tab.key)}
+                  className="inline-flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-[13px] font-medium transition-colors"
                   style={{
-                    borderColor: action.urgente && !isDone ? '#FECACA' : isExpanded ? meta.border : '#E5E7EB',
-                    boxShadow: isExpanded
-                      ? `0 0 0 2px ${meta.border}60, 0 4px 16px rgba(0,0,0,0.06)`
-                      : action.urgente && !isDone ? '0 0 0 1px rgba(220,38,38,0.1), 0 2px 8px rgba(220,38,38,0.06)'
-                      : '0 1px 3px rgba(0,0,0,0.04)',
+                    borderColor: active ? 'var(--accent)' : 'transparent',
+                    color: active ? 'var(--fg-1)' : 'var(--fg-3)',
+                    marginBottom: -1,
                   }}
                 >
-                  {action.urgente && !isDone && (
-                    <div className="h-0.5" style={{ background: 'linear-gradient(90deg, #DC2626, #EF4444, #DC2626)' }} />
-                  )}
-
-                  <button
-                    className="w-full flex items-center gap-4 p-4 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default"
-                    onClick={() => !isDone && !isProc && setExpandedId(isExpanded ? null : action.id)}
-                    disabled={isDone || isProc}
+                  {tab.label}
+                  <span
+                    className="rounded-full px-[7px] py-px text-[10px] tnum"
+                    style={{
+                      background: active ? 'var(--accent-bg)' : 'var(--bg-subtle)',
+                      color: active ? 'var(--accent-text)' : 'var(--fg-3)',
+                    }}
                   >
-                    <div className="tnum flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold"
-                         style={{ background: meta.iconBg, color: meta.color }}>
-                      {isDone ? 'OK' : isProc ? '...' : meta.icon}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="badge text-[10px]"
-                              style={{ background: meta.iconBg, color: meta.color, border: `1px solid ${meta.border}` }}>
-                          {meta.label}
-                        </span>
-                        {action.urgente && !isDone && (
-                          <span className="badge text-[10px]" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>Urgente</span>
-                        )}
-                        {isDone && (
-                          <span className="badge text-[10px]" style={{ background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>Completado</span>
-                        )}
-                      </div>
-                      <h3 className="text-sm font-bold" style={{ color: '#111827' }}>{action.title}</h3>
-                      <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{action.description}</p>
-                      <p className="text-[10px] mono mt-1.5" style={{ color: '#9CA3AF' }}>
-                        {new Date(action.created_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-
-                    {!isDone && !isProc && (
-                      <span className="text-xs font-medium flex-shrink-0 transition-transform duration-200"
-                            style={{ color: meta.color, transform: isExpanded ? 'rotate(90deg)' : 'none' }}>→</span>
-                    )}
-                  </button>
-
-                  {isExpanded && !isDone && (
-                    <div className="px-5 pb-5" style={{ borderTop: `1px solid ${meta.border}50` }}>
-                      {renderForm(action)}
-                      {errorMsg && (
-                        <p className="mt-3 text-xs rounded-lg px-3 py-2"
-                           style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
-                          Error: {errorMsg}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    {tab.count}
+                  </span>
+                </button>
               )
             })}
           </div>
-        </div>
-      ))}
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(390px,0.9fr)]">
+            <div className="stagger-children flex flex-col gap-2.5">
+              {filteredItems.map(({ action, status }) => {
+                const meta = META[action.type]
+                const selected = selectedState?.action.id === action.id
+                const isDone = status === 'completed'
+                const isProc = processingId === action.id
+                const tone = action.urgente ? 'var(--danger)' : meta.color
+
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    onClick={() => !isDone && setSelectedId(action.id)}
+                    className={clsx('grid overflow-hidden text-left transition-all', isDone && 'opacity-50')}
+                    style={{
+                      gridTemplateColumns: '4px 1fr',
+                      border: selected ? '1px solid var(--accent)' : '1px solid var(--border-default)',
+                      borderRadius: 'var(--r-lg)',
+                      background: 'var(--bg-surface)',
+                      boxShadow: selected ? 'var(--shadow-md)' : 'var(--shadow-xs)',
+                      cursor: isDone ? 'default' : 'pointer',
+                    }}
+                    disabled={isDone}
+                  >
+                    <div style={{ background: tone }} />
+                    <div className="p-3.5">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="badge badge--violet" style={{ background: meta.iconBg, color: meta.color, borderColor: meta.border }}>
+                          <span className="dot" />
+                          {meta.label}
+                        </span>
+                        <span className="tnum text-[11px]" style={{ color: 'var(--fg-4)' }}>{actionReference(action)}</span>
+                        <span className="ml-auto text-[11px]" style={{ color: 'var(--fg-4)' }}>
+                          {new Date(action.created_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <div className="mb-1 text-sm font-semibold" style={{ color: 'var(--fg-1)' }}>{action.title}</div>
+                      <p className="line-clamp-2 text-xs" style={{ color: 'var(--fg-2)' }}>{action.description}</p>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <AgentStrip compact>{action.urgente ? 'Requiere decisión prioritaria.' : 'Pendiente de confirmación humana.'}</AgentStrip>
+                        <span className="avatar h-5 w-5 text-[9px]">BF</span>
+                      </div>
+                      {isProc && <p className="mt-2 text-xs" style={{ color: 'var(--accent)' }}>Procesando...</p>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="self-start xl:sticky xl:top-[72px]">
+              {selectedState ? (
+                <div className="card overflow-hidden p-0">
+                  <div className="card__header">
+                    <div className="min-w-0">
+                      <div className="card__title truncate">{selectedState.action.title}</div>
+                      <div className="tnum mt-1 text-[11px]" style={{ color: 'var(--fg-4)' }}>{actionReference(selectedState.action)}</div>
+                    </div>
+                    <span className="badge badge--violet" style={{
+                      background: META[selectedState.action.type].iconBg,
+                      color: META[selectedState.action.type].color,
+                      borderColor: META[selectedState.action.type].border,
+                    }}>
+                      <span className="dot" />
+                      {FILTER_LABELS[actionFilterFor(selectedState.action.type)]}
+                    </span>
+                  </div>
+
+                  <div className="card__body">
+                    <AgentStrip>{actionReasoning(selectedState.action)}</AgentStrip>
+                    <p className="mt-3 text-[13px] leading-relaxed" style={{ color: 'var(--fg-2)' }}>
+                      {selectedState.action.description}
+                    </p>
+
+                    <div className="mt-4 grid grid-cols-[110px_1fr] text-xs">
+                      {[
+                        ['Referencia', actionReference(selectedState.action)],
+                        ['Etapa', META[selectedState.action.type].stage],
+                        ['Creada', new Date(selectedState.action.created_at).toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })],
+                      ].map(([label, value]) => (
+                        <div key={label} className="contents">
+                          <div className="border-b py-1.5" style={{ color: 'var(--fg-3)', borderColor: 'var(--border-subtle)' }}>{label}</div>
+                          <div className="border-b py-1.5 font-medium" style={{ color: 'var(--fg-1)', borderColor: 'var(--border-subtle)' }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="border-t px-4 pb-4" style={{ borderColor: 'var(--border-subtle)' }}>
+                    {renderForm(selectedState.action)}
+                    {selectedState.errorMsg && (
+                      <p className="mt-3 rounded-lg px-3 py-2 text-xs"
+                        style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                        Error: {selectedState.errorMsg}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="card">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--fg-1)' }}>Sin acciones en este filtro</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--fg-3)' }}>Cambia de pestaña para revisar otra etapa del flujo.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {!loading && pending === 0 && (
-        <div className="rounded-xl border p-12 text-center" style={{ background: '#FFFFFF', borderColor: '#A7F3D0' }}>
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl mx-auto mb-4" style={{ background: '#ECFDF5' }}>
-            <span style={{ fontSize: 28 }}>✓</span>
+        <div className="card p-12 text-center" style={{ borderColor: '#A7F3D0' }}>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: '#ECFDF5', color: '#059669' }}>
+            OK
           </div>
-          <p className="text-lg font-bold" style={{ color: '#059669' }}>¡Todo al día!</p>
-          <p className="text-sm mt-1.5" style={{ color: '#A3A3A3' }}>Todas las acciones han sido procesadas.</p>
+          <p className="text-lg font-bold" style={{ color: '#059669' }}>Todo al día</p>
+          <p className="mt-1.5 text-sm" style={{ color: '#A3A3A3' }}>Todas las acciones han sido procesadas.</p>
         </div>
       )}
     </div>
