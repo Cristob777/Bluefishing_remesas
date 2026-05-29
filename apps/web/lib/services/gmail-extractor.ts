@@ -163,11 +163,6 @@ function getAccountsFromEnv(): AccountConfig[] {
     )
   }
 
-  // Legacy named slots (backwards compat for existing deployments)
-  add(process.env.GMAIL_REFRESH_TOKEN_SEBASTIAN, 'sebastian', 'sebastian')
-  add(process.env.GMAIL_REFRESH_TOKEN_HECTOR,    'hector',    'hector')
-  add(process.env.GMAIL_REFRESH_TOKEN_CRISTOBAL, 'ops',       'cristobal')
-
   return accounts
 }
 

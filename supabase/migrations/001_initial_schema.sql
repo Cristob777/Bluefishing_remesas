@@ -170,14 +170,6 @@ create table fx_rates (
 );
 
 -- ────────────────────────────────────────────────────────────
--- DATOS INICIALES
--- ────────────────────────────────────────────────────────────
-insert into proveedores (nombre, pais, moneda, contacto_nombre, contacto_email) values
-  ('AMIGOS COMPANY LIMITED',  'China', 'USD', 'Coco Yao', 'amigoscn.coco@gmail.com'),
-  ('MEIHO CHEMICAL INDUSTRY', 'Japón', 'JPY', null, null),
-  ('VARIVAS CO., LTD.',        'Japón', 'JPY', null, null);
-
--- ────────────────────────────────────────────────────────────
 -- ROW LEVEL SECURITY
 -- ────────────────────────────────────────────────────────────
 alter table proveedores       enable row level security;

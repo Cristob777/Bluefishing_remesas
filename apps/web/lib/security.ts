@@ -2,9 +2,6 @@ import { timingSafeEqual as cryptoTimingSafeEqual } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import type { WebhookEmailPayload } from '@/types'
 
-// Rate limiting re-exported from lib/rate-limit.ts (swappable backend)
-export { checkRateLimit } from '@/lib/rate-limit'
-
 // x-real-ip set by Vercel edge — more trustworthy than x-forwarded-for
 export function getClientIp(req: NextRequest): string {
   return (

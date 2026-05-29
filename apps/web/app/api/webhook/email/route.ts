@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { classifyEmail } from '@/lib/email-classifier'
 import { triggerAgent, categoryToAgent } from '@/lib/managed-agents'
 import { supabase } from '@/lib/supabase'
+import { rateLimit } from '@/lib/rateLimit'
 import {
-  checkRateLimit,
   getClientIp,
   validateWebhookPayload,
   sanitizePayload,
@@ -36,16 +36,8 @@ async function tagDocumentsWithDocumentAiId(payload: WebhookEmailPayload) {
 export async function POST(req: NextRequest) {
   // 1. Rate limiting
   const ip = getClientIp(req)
-  const rateCheck = checkRateLimit(ip)
-  if (!rateCheck.allowed) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      {
-        status: 429,
-        headers: { 'Retry-After': String(rateCheck.retryAfter) },
-      }
-    )
-  }
+  const limited = rateLimit(req, 'webhook')
+  if (limited) return limited
 
   // 2. Autenticación — comparación timing-safe para evitar timing attacks
   const secret = req.headers.get('x-webhook-secret') ?? ''
@@ -119,6 +111,24 @@ export async function POST(req: NextRequest) {
 
   if (classified.category === 'UNKNOWN') {
     return NextResponse.json({ status: 'ignored', category: 'UNKNOWN' })
+  }
+
+  // INSTRUCCION_PAGO: no agent yet — log and alert for human review
+  if (classified.category === 'INSTRUCCION_PAGO') {
+    await supabase.from('agent_logs').insert({
+      agent_name: 'webhook',
+      accion: 'INSTRUCCION_PAGO_RECIBIDA',
+      payload: { email_id: payload.email_id, from: payload.email_from, subject: payload.email_subject },
+      resultado: 'PENDING_APPROVAL',
+      error_mensaje: 'INSTRUCCION_PAGO recibida — requiere acción humana',
+    })
+    await supabase.from('alertas').insert({
+      tipo: 'INSTRUCCION_PAGO',
+      mensaje: `Instrucción de pago recibida de ${payload.email_from}: "${payload.email_subject}". Revisar y procesar manualmente.`,
+      urgente: false,
+      destinatario: 'finance',
+    })
+    return NextResponse.json({ status: 'pending_human', category: 'INSTRUCCION_PAGO' })
   }
 
   const agentName = categoryToAgent(classified.category)

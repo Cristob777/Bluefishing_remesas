@@ -20,6 +20,9 @@ dist/
 # MCP config — contiene credenciales reales
 .mcp.json
 
+# Dev seed — contiene datos reales de proveedores
+supabase/seed.dev.sql
+
 # Claude Code context — contienen datos operacionales internos
 CLAUDE.md
 PROJECT.md
