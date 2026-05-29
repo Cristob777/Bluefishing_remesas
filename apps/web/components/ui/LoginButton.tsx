@@ -3,7 +3,7 @@
 import { useFormStatus } from 'react-dom'
 import { Loader2 } from 'lucide-react'
 
-export function LoginButton() {
+export function LoginButton({ label = 'Ingresar' }: { label?: string }) {
   const { pending } = useFormStatus()
   return (
     <button
@@ -15,9 +15,9 @@ export function LoginButton() {
       {pending ? (
         <>
           <Loader2 size={15} className="animate-spin" />
-          Ingresando…
+          Enviando…
         </>
-      ) : 'Ingresar'}
+      ) : label}
     </button>
   )
 }
