@@ -5,7 +5,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/caveman/SKILL.md",
-      "computedHash": "536908fcfcb232600a5875aa85f1fd50fd13305e9d67379bcd95f07c8c916f3f"
+      "computedHash": "536908fcfcb232600a5875aa85f1fd50fd13505e9d67379bcd95f07c8c916f3f"
     },
     "diagnose": {
       "source": "mattpocock/skills",
@@ -72,6 +72,48 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/zoom-out/SKILL.md",
       "computedHash": "a8b8ed45609fdfa9f184d0c9f69326e43822a42eebea14db2792d777373de562"
+    },
+    "bluefishing-design": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/bluefishing-design/SKILL.md",
+      "description": "Design system, tokens, brand assets, and UI kits for Bluefishing"
+    },
+    "bluefishing-dashboard-frontend": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/bluefishing-dashboard-frontend/SKILL.md",
+      "description": "Execution rules for building/improving Bluefishing dashboard screens in Next.js"
+    },
+    "source-command-deploy": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/source-command-deploy/SKILL.md",
+      "description": "Deploy Bluefishing to production — security scan, commit, push"
+    },
+    "source-command-check-remesa": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/source-command-check-remesa/SKILL.md",
+      "description": "Inspect the full state of a remesa across all related tables"
+    },
+    "source-command-new-agent": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/source-command-new-agent/SKILL.md",
+      "description": "Scaffold a new Claude agent for the Bluefishing pipeline"
+    },
+    "source-command-new-route": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/source-command-new-route/SKILL.md",
+      "description": "Scaffold a new secure API route for the Bluefishing dashboard"
+    },
+    "source-command-security-scan": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/source-command-security-scan/SKILL.md",
+      "description": "Scan the entire codebase for exposed real data and security issues"
     }
   }
 }

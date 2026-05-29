@@ -26,11 +26,15 @@ supabase/seed.dev.sql
 # Claude Code context — contienen datos operacionales internos
 CLAUDE.md
 PROJECT.md
+LOGICA_NEGOCIO.md
 
 # Codex context — contienen datos operacionales internos
 AGENTS.md
 .codex/
 .tmp/
+
+# Claude worktrees — efímeros, no commitear
+.claude/worktrees/
 
 # Vercel
 .vercel

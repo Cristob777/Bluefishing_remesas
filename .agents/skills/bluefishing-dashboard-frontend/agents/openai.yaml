@@ -1,0 +1,3 @@
+display_name: Bluefishing Dashboard Frontend
+short_description: Frontend execution rules for improving the Bluefishing operational dashboard screens.
+default_prompt: Improve the Bluefishing dashboard frontend using the operational UX rules, screen specs and QA checklist.

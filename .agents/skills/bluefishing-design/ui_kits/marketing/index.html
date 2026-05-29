@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bluefishing Marketing Kit</title>
+  <link rel="stylesheet" href="../../ui.css">
+  <style>
+    body { background: #05070f; color:white; }
+    .hero { min-height: 92vh; display:grid; align-items:center; padding:32px; background:
+      radial-gradient(900px 480px at 70% 25%, rgba(6,182,212,.18), transparent 58%),
+      radial-gradient(700px 420px at 8% 20%, rgba(79,70,229,.28), transparent 60%),
+      #05070f; }
+    .hero-inner { width:min(1180px,100%); margin:auto; display:grid; grid-template-columns:1fr 1.15fr; gap:46px; align-items:center; }
+    .hero h1 { margin:16px 0 14px; font-size: clamp(42px, 7vw, 82px); line-height:.94; letter-spacing:-.04em; }
+    .hero p { color:#a1a1aa; font-size:18px; line-height:1.6; max-width:620px; }
+    .product { background:rgba(255,255,255,.96); color:#0a0a0a; border-radius:18px; border:1px solid rgba(255,255,255,.18); box-shadow:0 30px 90px rgba(0,0,0,.42); overflow:hidden; }
+    .product-bar { height:44px; display:flex; gap:7px; align-items:center; padding:0 14px; border-bottom:1px solid #e7e5e4; background:#fafaf9; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#d4d4d8; }
+    .product-body { padding:16px; }
+    .screen-grid { display:grid; grid-template-columns:1fr 260px; gap:12px; }
+    @media(max-width:900px){ .hero-inner,.screen-grid{grid-template-columns:1fr}.hero{padding:20px}.product{margin-bottom:28px} }
+  </style>
+</head>
+<body>
+  <main class="hero">
+    <div class="hero-inner">
+      <section>
+        <img src="../../assets/bluefishing-wordmark-dark.svg" alt="Bluefishing" width="220">
+        <h1>Operaciones de importación con agentes AI.</h1>
+        <p>Bluefishing convierte emails, facturas, pagos, provisiones, DIN y stock en un flujo trazable para equipos de importación en Chile.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:26px">
+          <button class="bf-btn bf-btn-primary">Ver dashboard</button>
+          <button class="bf-btn bf-btn-secondary" style="background:rgba(255,255,255,.08);color:white;border-color:rgba(255,255,255,.18)">Ver agentes</button>
+        </div>
+      </section>
+
+      <section class="product" aria-label="Vista de producto">
+        <div class="product-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:10px;color:#a3a3a3;font:700 11px var(--bf-font-mono)">bluefishing.app/dashboard</span></div>
+        <div class="product-body">
+          <div class="screen-grid">
+            <div class="bf-card">
+              <div class="bf-card-header"><h2 class="bf-card-title">Remesas activas</h2><p class="bf-card-subtitle">Estado por expediente</p></div>
+              <div class="bf-table-wrap" style="border:0;border-radius:0"><table class="bf-table"><tbody>
+                <tr><td class="bf-type-mono">BF-260501</td><td><span class="bf-badge bf-badge-info">Pago pendiente</span></td></tr>
+                <tr><td class="bf-type-mono">BF-260502</td><td><span class="bf-badge bf-badge-agent">Agente procesando</span></td></tr>
+                <tr><td class="bf-type-mono">BF-260503</td><td><span class="bf-badge bf-badge-success">Reconciliado</span></td></tr>
+              </tbody></table></div>
+            </div>
+            <div class="bf-card" style="padding:14px">
+              <span class="bf-badge bf-badge-agent">Customs Agent</span>
+              <p style="font-size:13px;line-height:1.5;color:#525252">Validó DIN contra provisión. Diferencia dentro de tolerancia CLP 50.000.</p>
+              <button class="bf-btn bf-btn-primary" style="width:100%">Archivar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

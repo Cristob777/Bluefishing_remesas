@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bluefishing Dashboard Kit</title>
+  <link rel="stylesheet" href="../../ui.css">
+  <style>
+    .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:22px 0; }
+    .stat { padding:16px; }
+    .stat strong { display:block; font:750 28px var(--bf-font-mono); color:var(--bf-text); }
+    .stat span { color:var(--bf-text-faint); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    .content { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:16px; }
+    @media(max-width:1000px){ .bf-shell{grid-template-columns:1fr}.bf-sidebar{display:none}.stats,.content{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="bf-shell">
+    <aside class="bf-sidebar">
+      <div class="bf-brand">
+        <img src="../../assets/bluefishing-mark.svg" alt="" width="36" height="36">
+        <div><p class="bf-brand-title">Bluefishing</p><p class="bf-brand-kicker">AI import ops</p></div>
+      </div>
+      <nav class="bf-nav">
+        <a class="bf-nav-item is-active" href="#">Resumen</a>
+        <a class="bf-nav-item" href="#">Remesas</a>
+        <a class="bf-nav-item" href="#">Acciones</a>
+        <a class="bf-nav-item" href="#">Stock</a>
+        <a class="bf-nav-item" href="#">Agentes</a>
+        <a class="bf-nav-item" href="#">Documentos</a>
+        <a class="bf-nav-item" href="#">Rules</a>
+      </nav>
+    </aside>
+    <main class="bf-main">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:18px">
+        <div>
+          <div class="bf-page-eyebrow">Operación en vivo</div>
+          <h1 class="bf-page-title" style="margin:4px 0">Resumen</h1>
+          <p class="bf-page-subtitle">Inbox, facturas, pagos, aduana, stock y conciliación en un solo flujo.</p>
+        </div>
+        <button class="bf-btn bf-btn-primary">Nueva acción</button>
+      </div>
+
+      <section class="stats">
+        <div class="bf-card stat"><span>Acciones pendientes</span><strong>12</strong></div>
+        <div class="bf-card stat"><span>Remesas activas</span><strong>28</strong></div>
+        <div class="bf-card stat"><span>DIN por conciliar</span><strong>4</strong></div>
+        <div class="bf-card stat"><span>Agentes activos</span><strong>5</strong></div>
+      </section>
+
+      <section class="content">
+        <div class="bf-card">
+          <div class="bf-card-header"><h2 class="bf-card-title">Cola de acciones</h2><p class="bf-card-subtitle">Prioriza por vencimiento, monto y bloqueo operacional.</p></div>
+          <div class="bf-table-wrap" style="border:0;border-radius:0">
+            <table class="bf-table">
+              <thead><tr><th>Tipo</th><th>Invoice</th><th>Proveedor</th><th>Estado</th><th>Acción</th></tr></thead>
+              <tbody>
+                <tr><td>Pago</td><td class="bf-type-mono">TEST-001</td><td>Pacific Parts</td><td><span class="bf-badge bf-badge-info">Listo</span></td><td><button class="bf-btn bf-btn-primary">Emitir</button></td></tr>
+                <tr><td>DIN</td><td class="bf-type-mono">TEST-002</td><td>Ningbo Ocean</td><td><span class="bf-badge bf-badge-review">Diferencia</span></td><td><button class="bf-btn bf-btn-secondary">Revisar</button></td></tr>
+                <tr><td>Stock</td><td class="bf-type-mono">TEST-003</td><td>Kobe Tools</td><td><span class="bf-badge bf-badge-warning">Conteo</span></td><td><button class="bf-btn bf-btn-secondary">Ingresar</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="bf-card">
+          <div class="bf-card-header"><h2 class="bf-card-title">Razonamiento del agente</h2><p class="bf-card-subtitle">Evidencia, regla y trazabilidad.</p></div>
+          <div style="padding:16px;display:grid;gap:12px">
+            <span class="bf-badge bf-badge-agent">Invoice Agent</span>
+            <p style="margin:0;color:var(--bf-text-muted);font-size:13px;line-height:1.55">Detectó factura de proveedor permitido, extrajo monto total y sugirió pago 100% porque la regla activa coincide con proveedor recurrente.</p>
+            <div class="bf-card" style="padding:12px;background:var(--bf-bg-subtle)">
+              <strong style="font-size:12px">Regla aplicada</strong>
+              <p class="bf-type-mono" style="margin:6px 0 0;color:var(--bf-text-faint);font-size:12px">if supplier.trusted && amount &lt; CLP 5M</p>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

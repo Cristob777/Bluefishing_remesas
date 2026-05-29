@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bluefishing Design Preview</title>
+  <link rel="stylesheet" href="../ui.css">
+  <style>
+    .preview-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .span-4 { grid-column: span 4; }
+    .span-8 { grid-column: span 8; }
+    .swatch { height: 72px; border-radius: 12px; border: 1px solid var(--bf-border); padding: 10px; display: flex; align-items: end; font: 700 11px var(--bf-font-mono); }
+    @media (max-width: 900px) { .preview-grid { grid-template-columns: 1fr; } .span-4,.span-8 { grid-column: span 1; } }
+  </style>
+</head>
+<body>
+  <main class="bf-main">
+    <div style="display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:24px">
+      <div>
+        <div class="bf-page-eyebrow">Sistema visual</div>
+        <h1 class="bf-page-title" style="margin:4px 0">Bluefishing Design</h1>
+        <p class="bf-page-subtitle">Tokens, badges, acciones, tablas y agentes para operaciones de importación.</p>
+      </div>
+      <img src="../assets/bluefishing-wordmark-light.svg" alt="Bluefishing" width="220" height="48">
+    </div>
+
+    <section class="preview-grid">
+      <div class="span-4 bf-card">
+        <div class="bf-card-header">
+          <h2 class="bf-card-title">Color semántico</h2>
+          <p class="bf-card-subtitle">Cobalt para humano, teal para agente.</p>
+        </div>
+        <div style="display:grid;gap:10px;padding:14px">
+          <div class="swatch" style="background:var(--bf-cobalt-soft);color:var(--bf-cobalt)">cobalt / acción humana</div>
+          <div class="swatch" style="background:var(--bf-teal-soft);color:var(--bf-teal-hover)">teal / agente AI</div>
+          <div class="swatch" style="background:var(--bf-warning-soft);color:var(--bf-warning)">warning / pendiente</div>
+          <div class="swatch" style="background:var(--bf-danger-soft);color:var(--bf-danger)">danger / urgente</div>
+        </div>
+      </div>
+
+      <div class="span-8 bf-card">
+        <div class="bf-card-header">
+          <h2 class="bf-card-title">Remesas</h2>
+          <p class="bf-card-subtitle">Tabla densa, scannable y con estado por color.</p>
+        </div>
+        <div style="padding:14px">
+          <div class="bf-table-wrap">
+            <table class="bf-table">
+              <thead>
+                <tr><th>Invoice</th><th>Proveedor</th><th>Estado</th><th>Monto</th><th>Agente</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="bf-type-mono">BF-260501</td><td>Pacific Parts Ltd.</td><td><span class="bf-badge bf-badge-info">Pago pendiente</span></td><td class="bf-type-mono">USD 12.480</td><td><span class="bf-badge bf-badge-agent">Invoice Agent</span></td></tr>
+                <tr><td class="bf-type-mono">BF-260502</td><td>Ningbo Ocean Co.</td><td><span class="bf-badge bf-badge-review">Revisión requerida</span></td><td class="bf-type-mono">USD 48.300</td><td><span class="bf-badge bf-badge-agent">Customs Agent</span></td></tr>
+                <tr><td class="bf-type-mono">BF-260503</td><td>Kobe Tools</td><td><span class="bf-badge bf-badge-success">Reconciliado</span></td><td class="bf-type-mono">JPY 2.900.000</td><td><span class="bf-badge bf-badge-agent">DIN Agent</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="span-4 bf-card">
+        <div class="bf-card-header">
+          <h2 class="bf-card-title">Acciones</h2>
+          <p class="bf-card-subtitle">Controles claros para completar workflow.</p>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;padding:14px">
+          <button class="bf-btn bf-btn-primary">Aprobar pago</button>
+          <button class="bf-btn bf-btn-agent">Reintentar agente</button>
+          <button class="bf-btn bf-btn-secondary">Ver evidencia</button>
+        </div>
+      </div>
+
+      <div class="span-8 bf-card">
+        <div class="bf-card-header">
+          <h2 class="bf-card-title">Agentes</h2>
+          <p class="bf-card-subtitle">AI mostrado con estado, evidencia y confianza.</p>
+        </div>
+        <div class="bf-agent-strip">
+          <div class="bf-agent-row"><span class="bf-agent-dot"></span><div><strong>Invoice Agent</strong><br><span style="color:var(--bf-text-faint);font-size:12px">Extrajo 12 campos con 96% confianza</span></div><span class="bf-badge bf-badge-agent">Activo</span></div>
+          <div class="bf-agent-row"><span class="bf-agent-dot"></span><div><strong>Customs Agent</strong><br><span style="color:var(--bf-text-faint);font-size:12px">Validó provisión contra despacho DSP-26-9001</span></div><span class="bf-badge bf-badge-warning">Revisión</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
