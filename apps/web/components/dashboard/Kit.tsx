@@ -109,7 +109,9 @@ export function FilterChip({
 export function AgentStrip({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return (
     <span className="agent-strip" style={compact ? { padding: '4px 8px', fontSize: 11 } : undefined}>
-      <Sparkles size={12} strokeWidth={1.75} />
+      <span className="sparkle" style={{ display: 'inline-flex' }}>
+        <Sparkles size={12} strokeWidth={1.75} />
+      </span>
       <span>{children}</span>
     </span>
   )
