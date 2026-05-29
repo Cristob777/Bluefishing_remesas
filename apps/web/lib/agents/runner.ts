@@ -20,8 +20,9 @@ export async function runAgentLoop(params: {
   input: unknown
   remesaId?: string
   maxTokens?: number
+  sessionId?: string
 }): Promise<AgentRunResult> {
-  const sessionId = `${params.agentName}_${Date.now()}`
+  const sessionId = params.sessionId ?? `${params.agentName}_${Date.now()}`
 
   const log = (accion: string, payload: unknown, resultado: 'SUCCESS' | 'ERROR', errorMsg?: string) =>
     audit({ agent_name: params.agentName, session_id: sessionId, remesa_id: params.remesaId, accion, payload: payload as Record<string, unknown>, resultado, error_mensaje: errorMsg })

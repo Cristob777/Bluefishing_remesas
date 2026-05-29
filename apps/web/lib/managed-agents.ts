@@ -1,5 +1,6 @@
 import type { AgentName, EmailCategory, ClassifiedEmail } from '@/types'
 import type { AgentRunResult } from './agents/runner'
+import { audit } from './audit'
 import { runInvoiceIntakeAgent }    from './agents/invoice-intake'
 import { runCustomsFundsAgent }     from './agents/customs-funds'
 import { runDinReconciliationAgent } from './agents/din-reconciliation'
@@ -33,15 +34,32 @@ const AGENT_REGISTRY: Record<AgentName, AgentEntry> = {
   din_reconciliation: {
     run: runDinReconciliationAgent,
     onSuccess: async (result) => {
-      // Chain: if reconciled, immediately trigger landed cost
-      const res = result.result as { estado?: string; remesa_id?: string } | undefined
-      if (res?.estado === 'RECONCILIADO' && res.remesa_id) {
-        await runLandedCostAgent({ remesa_id: res.remesa_id })
+      const res = result.result
+      const hasExpectedShape = res !== null && typeof res === 'object' && !Array.isArray(res) && 'estado' in (res as object)
+      if (!hasExpectedShape) {
+        await audit({ agent_name: 'din_reconciliation', session_id: result.session_id, accion: 'CHAIN_ABORTED', payload: { reason: 'result missing expected {estado} field' }, resultado: 'ERROR' })
+        return
+      }
+      const typed = res as { estado?: string; remesa_id?: string }
+      if (typed.estado === 'RECONCILIADO' && typed.remesa_id) {
+        await runLandedCostAgent({ remesa_id: typed.remesa_id })
       }
     },
   },
   nota_debito: {
     run: runNotaDebitoAgent,
+    onSuccess: async (result) => {
+      const res = result.result
+      const hasExpectedShape = res !== null && typeof res === 'object' && !Array.isArray(res) && 'estado' in (res as object)
+      if (!hasExpectedShape) {
+        await audit({ agent_name: 'nota_debito', session_id: result.session_id, accion: 'CHAIN_ABORTED', payload: { reason: 'result missing expected {estado} field' }, resultado: 'ERROR' })
+        return
+      }
+      const typed = res as { estado?: string; remesa_id?: string }
+      if (typed.estado === 'RECONCILIADO' && typed.remesa_id) {
+        await runLandedCostAgent({ remesa_id: typed.remesa_id })
+      }
+    },
   },
   landed_cost: {
     run: (input) => runLandedCostAgent(input as unknown as { remesa_id: string }),

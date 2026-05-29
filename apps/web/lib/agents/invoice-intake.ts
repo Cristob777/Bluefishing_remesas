@@ -2,7 +2,7 @@ import { runAgentLoop } from './runner'
 import { supabaseTool, fxRateTool, toolHandlers } from './tools'
 import type { ClassifiedEmail } from '@/types'
 
-function buildSystemPrompt() {
+function buildSystemPrompt(sessionId: string) {
   const company = process.env.COMPANY_NAME ?? 'la empresa'
   const supplierChina = process.env.SUPPLIER_CHINA_NAME ?? 'PROVEEDOR_CHINA_1'
   const supplierChinaEmail = process.env.SUPPLIER_CHINA_EMAIL
@@ -64,7 +64,7 @@ RETURNING id
 
 **Paso 7** — Registra en agent_logs:
 INSERT INTO agent_logs (agent_name, session_id, remesa_id, accion, payload, resultado)
-VALUES ('invoice_intake', '<session_id_placeholder>', '<remesa_id>', 'INVOICE_PROCESADO',
+VALUES ('invoice_intake', '${sessionId}', '<remesa_id>', 'INVOICE_PROCESADO',
   '{"invoice_numero":"<num>","proveedor":"<prov>","monto":<monto>,"moneda":"<mon>"}',
   'SUCCESS')
 RETURNING id
@@ -87,9 +87,11 @@ Si no puedes determinar el proveedor porque no está en la tabla, usa proveedor_
 }
 
 export async function runInvoiceIntakeAgent(input: ClassifiedEmail) {
+  const sessionId = `invoice_intake_${Date.now()}`
   return runAgentLoop({
     agentName: 'invoice_intake',
-    systemPrompt: buildSystemPrompt(),
+    systemPrompt: buildSystemPrompt(sessionId),
+    sessionId,
     tools: [supabaseTool, fxRateTool],
     toolHandlers,
     input,

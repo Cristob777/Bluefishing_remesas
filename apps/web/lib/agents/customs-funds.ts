@@ -1,5 +1,6 @@
 import { runAgentLoop } from './runner'
 import { supabaseTool, toolHandlers } from './tools'
+import { config } from '@/lib/config'
 import type { ClassifiedEmail } from '@/types'
 
 function buildSystemPrompt(today: string) {
@@ -8,8 +9,7 @@ function buildSystemPrompt(today: string) {
   const customsRut = process.env.CUSTOMS_AGENCY_RUT ?? ''
   const customsAccounts = process.env.CUSTOMS_AGENCY_BANK_ACCOUNTS ?? ''
   const companyName = process.env.COMPANY_NAME ?? 'LA EMPRESA'
-  const ownerEmail = process.env.OWNER_EMAIL ?? 'OWNER_EMAIL'
-  const ownerEmailAlt = process.env.OWNER_EMAIL_ALT ?? ''
+  const ownerEmails = config.auth.ownerEmails.join(', ') || 'OWNER_EMAILS'
   const financeEmail = process.env.FINANCE_EMAIL ?? 'FINANCE_EMAIL'
 
   return `Eres el agente de provisión de fondos de aduana para BLUEFISHING.CL.
@@ -24,7 +24,7 @@ Tu misión: procesar un email de la agencia de aduanas que solicita fondos para 
 "Ag Aduana, Cliente:${companyName}, solicitud de Fondos despacho:XXXXX"
 
 ## Reglas críticas
-1. DEDUPLICACIÓN: el mismo email puede llegar a ${ownerEmail}${ownerEmailAlt ? `, ${ownerEmailAlt}` : ''} y/o ${financeEmail} simultáneamente.
+1. DEDUPLICACIÓN: el mismo email puede llegar a ${ownerEmails} y/o ${financeEmail} simultáneamente.
    Clave de dedup: email_id_origen (campo email_id del input).
    Si ya existe → SOLO actualizar array recibido_por. No crear nuevo registro.
 2. URGENTE: si fecha_vencimiento está a ≤ 3 días desde hoy → es_urgente = true.
