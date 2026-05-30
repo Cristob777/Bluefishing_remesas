@@ -1,11 +1,44 @@
 import type { AgentName, EmailCategory, ClassifiedEmail } from '@/types'
 import type { AgentRunResult } from './agents/runner'
 import { audit } from './audit'
+import { db } from './supabase'
 import { runInvoiceIntakeAgent }    from './agents/invoice-intake'
 import { runCustomsFundsAgent }     from './agents/customs-funds'
 import { runDinReconciliationAgent } from './agents/din-reconciliation'
 import { runNotaDebitoAgent }       from './agents/nota-debito'
 import { runLandedCostAgent }       from './agents/landed-cost'
+
+async function alertChainFailed(agentName: string, sessionId: string, remesaId: string | null | undefined, reason: string) {
+  await audit({
+    agent_name: agentName,
+    session_id: sessionId,
+    remesa_id:  remesaId ?? undefined,
+    accion: 'CHAIN_ABORTED',
+    payload: { reason },
+    resultado: 'ERROR',
+  })
+  await db.from('alertas').insert({
+    tipo:         'CADENA_FALLIDA',
+    mensaje:      `Cadena ${agentName}→landed_cost abortó. ${reason}. Session: ${sessionId}. Revisar agent_logs.`,
+    urgente:      true,
+    destinatario: 'ambos',
+    remesa_id:    remesaId ?? null,
+  })
+}
+
+async function runLandedCostWithRetry(remesaId: string, agentName: string, sessionId: string) {
+  try {
+    await runLandedCostAgent({ remesa_id: remesaId })
+  } catch (err) {
+    // One retry after 2 seconds
+    await new Promise(r => setTimeout(r, 2000))
+    try {
+      await runLandedCostAgent({ remesa_id: remesaId })
+    } catch (retryErr) {
+      await alertChainFailed(agentName, sessionId, remesaId, `landed_cost falló tras retry: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`)
+    }
+  }
+}
 
 export interface AgentTriggerResult {
   session_id: string
@@ -37,12 +70,12 @@ const AGENT_REGISTRY: Record<AgentName, AgentEntry> = {
       const res = result.result
       const hasExpectedShape = res !== null && typeof res === 'object' && !Array.isArray(res) && 'estado' in (res as object)
       if (!hasExpectedShape) {
-        await audit({ agent_name: 'din_reconciliation', session_id: result.session_id, accion: 'CHAIN_ABORTED', payload: { reason: 'result missing expected {estado} field' }, resultado: 'ERROR' })
+        await alertChainFailed('din_reconciliation', result.session_id, null, 'result missing expected {estado} field')
         return
       }
       const typed = res as { estado?: string; remesa_id?: string }
       if (typed.estado === 'RECONCILIADO' && typed.remesa_id) {
-        await runLandedCostAgent({ remesa_id: typed.remesa_id })
+        await runLandedCostWithRetry(typed.remesa_id, 'din_reconciliation', result.session_id)
       }
     },
   },
@@ -52,12 +85,12 @@ const AGENT_REGISTRY: Record<AgentName, AgentEntry> = {
       const res = result.result
       const hasExpectedShape = res !== null && typeof res === 'object' && !Array.isArray(res) && 'estado' in (res as object)
       if (!hasExpectedShape) {
-        await audit({ agent_name: 'nota_debito', session_id: result.session_id, accion: 'CHAIN_ABORTED', payload: { reason: 'result missing expected {estado} field' }, resultado: 'ERROR' })
+        await alertChainFailed('nota_debito', result.session_id, null, 'result missing expected {estado} field')
         return
       }
       const typed = res as { estado?: string; remesa_id?: string }
       if (typed.estado === 'RECONCILIADO' && typed.remesa_id) {
-        await runLandedCostAgent({ remesa_id: typed.remesa_id })
+        await runLandedCostWithRetry(typed.remesa_id, 'nota_debito', result.session_id)
       }
     },
   },

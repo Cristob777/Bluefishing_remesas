@@ -19,7 +19,9 @@ export type AlertaTipo =
   | 'PAGO_PENDIENTE'
   | 'DIFERENCIA_STOCK'
   | 'APROBACION_REQUERIDA'
-  | 'SALDO_FAVOR_AGENSA'  // provisión pagó de más → nota de débito pendiente
+  | 'SALDO_FAVOR_AGENSA'    // provisión pagó de más → nota de débito pendiente
+  | 'INSTRUCCION_PAGO'      // Sebastian instruyó a Hector por email → acción pendiente
+  | 'CADENA_FALLIDA'        // cadena agente abortó inesperadamente → revisión manual
 
 export type AgentName =
   | 'invoice_intake'

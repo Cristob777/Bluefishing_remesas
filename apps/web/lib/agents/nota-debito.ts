@@ -1,4 +1,5 @@
 import { runAgentLoop } from './runner'
+import { supabaseTool, toolHandlers } from './tools'
 import type { ClassifiedEmail } from '@/types'
 
 const SYSTEM_PROMPT = `Eres el agente de nota de débito/crédito AGENSA para una empresa importadora chilena.
@@ -41,32 +42,8 @@ export async function runNotaDebitoAgent(input: ClassifiedEmail) {
   return runAgentLoop({
     agentName:    'nota_debito',
     systemPrompt: SYSTEM_PROMPT,
-    tools: [
-      {
-        name:        'supabase_execute_sql',
-        description: 'Leer y escribir en Supabase PostgreSQL',
-        input_schema: {
-          type: 'object' as const,
-          properties: {
-            sql: { type: 'string', description: 'SQL a ejecutar' },
-          },
-          required: ['sql'],
-        },
-      },
-    ],
-    toolHandlers: {
-      supabase_execute_sql: async (input: unknown) => {
-        const { createClient } = await import('@supabase/supabase-js')
-        const sb = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        )
-        const { sql } = input as { sql: string }
-        const { data, error } = await sb.rpc('run_sql', { sql_text: sql })
-        if (error) return { error: error.message }
-        return data
-      },
-    },
+    tools:        [supabaseTool],
+    toolHandlers,
     input,
   })
 }

@@ -256,7 +256,32 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
         })
     }
 
-    // 9. APROBAR_OPERACION — alertas de aprobación requerida (operaciones > CLP 5M)
+    // 9. INSTRUCCION_PAGO desde email — Sebastian instruyó a Hector por correo
+    const { data: alertasInstruccion } = await supabase
+      .from('alertas')
+      .select('id, remesa_id, mensaje, urgente, created_at, remesa:remesas(numero_invoice, monto_original, moneda_origen, proveedor:proveedores(nombre))')
+      .eq('tipo', 'INSTRUCCION_PAGO')
+      .eq('leida', false)
+
+    alertasInstruccion?.forEach(a => {
+      const r = a.remesa as { numero_invoice?: string; monto_original?: number; moneda_origen?: string; proveedor?: { nombre?: string } } | null
+      actions.push({
+        id:             `instruccion-email-${a.id}`,
+        type:           'INSTRUCCION_PAGO',
+        title:          `Instrucción de pago${r?.numero_invoice ? ` — ${r.numero_invoice}` : ''}`,
+        description:    a.mensaje,
+        remesa_id:      a.remesa_id ?? '',
+        invoice:        r?.numero_invoice ?? '—',
+        proveedor:      r?.proveedor?.nombre ?? '—',
+        monto_original: r?.monto_original ?? 0,
+        moneda:         r?.moneda_origen ?? 'USD',
+        alert_id:       a.id,
+        urgente:        true,
+        created_at:     a.created_at,
+      })
+    })
+
+    // 10. APROBAR_OPERACION — alertas de aprobación requerida (operaciones > CLP 5M)
     const { data: alertasAprobacion } = await supabase
       .from('alertas')
       .select('*, remesa:remesas(numero_invoice, monto_original, moneda_origen, proveedor:proveedores(nombre))')
