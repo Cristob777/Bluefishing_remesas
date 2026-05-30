@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Origins are configured via ALLOWED_ORIGINS env var (comma-separated).
+// Example: https://myapp.vercel.app,https://myapp-preview.vercel.app
+const envOrigins = (process.env.ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+
 const ALLOWED_ORIGINS = new Set([
-  'https://bluefishing-agents.vercel.app',
-  'https://bluefishingremesasv01-otct8i4i1-cristob777s-projects.vercel.app',
+  ...envOrigins,
   ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : []),
 ])
 

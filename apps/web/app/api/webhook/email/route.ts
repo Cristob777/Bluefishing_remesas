@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { classifyEmail } from '@/lib/email-classifier'
-import { triggerAgent, categoryToAgent } from '@/lib/managed-agents'
+import { triggerAgent, categoryToAgent, handleInstruccionPago } from '@/lib/managed-agents'
 import { supabase } from '@/lib/supabase'
 import { rateLimit } from '@/lib/rateLimit'
 import {
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: 'ignored', category: 'UNKNOWN' })
   }
 
-  // INSTRUCCION_PAGO: no agent yet — log and alert for human review
+  // INSTRUCCION_PAGO: no agent — option (c) per WORKFLOW.md §4 Etapa 2
   if (classified.category === 'INSTRUCCION_PAGO') {
     // Try to link to an open remesa by matching invoice number in subject
     let remesaId: string | null = null
@@ -129,19 +129,11 @@ export async function POST(req: NextRequest) {
       remesaId = remesa?.id ?? null
     }
 
-    await supabase.from('agent_logs').insert({
-      agent_name: 'webhook',
-      accion: 'INSTRUCCION_PAGO_RECIBIDA',
-      payload: { email_id: payload.email_id, from: payload.email_from, subject: payload.email_subject, remesa_id: remesaId },
-      resultado: 'PENDING_APPROVAL',
-      error_mensaje: 'INSTRUCCION_PAGO recibida — requiere acción humana',
-    })
-    await supabase.from('alertas').insert({
-      tipo: 'INSTRUCCION_PAGO',
-      mensaje: `Instrucción de pago de ${payload.email_from}: "${payload.email_subject}". Registrar condición y emitir orden.`,
-      urgente: true,
-      destinatario: 'finance',
-      remesa_id: remesaId,
+    await handleInstruccionPago({
+      emailId:      payload.email_id,
+      emailFrom:    payload.email_from,
+      emailSubject: payload.email_subject,
+      remesaId,
     })
     return NextResponse.json({ status: 'pending_human', category: 'INSTRUCCION_PAGO', remesa_id: remesaId })
   }

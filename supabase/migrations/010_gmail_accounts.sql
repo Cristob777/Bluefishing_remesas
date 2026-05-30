@@ -5,6 +5,13 @@
 -- Tablas:
 --   gmail_accounts — tokens por cuenta (upsert por account_label)
 --   oauth_nonces   — nonces CSRF de corta vida para el flujo OAuth
+--
+-- ⚠️  DEUDA DE SEGURIDAD CONOCIDA:
+-- refresh_token se almacena en texto plano. La protección actual descansa
+-- únicamente en que solo service_role tiene acceso via RLS. Un leak del
+-- SUPABASE_SERVICE_ROLE_KEY comprometería todos los tokens de Gmail.
+-- Pendiente: cifrado a nivel de columna con pgsodium o Supabase Vault.
+-- Ver docs/SECURITY.md para el tracking de esta deuda.
 
 CREATE TABLE IF NOT EXISTS gmail_accounts (
   id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),

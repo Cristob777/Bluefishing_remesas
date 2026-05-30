@@ -1,66 +1,38 @@
-import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+'use client'
+
+import { useState } from 'react'
+import { createBrowserClient } from '@/lib/supabase'
 import { Logo } from '@/components/ui/Logo'
-import { LoginButton } from '@/components/ui/LoginButton'
 
-async function sendMagicLink(formData: FormData) {
-  'use server'
+export default function LoginPage() {
+  const [email, setEmail]   = useState('')
+  const [sent, setSent]     = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError]   = useState('')
 
-  const email   = formData.get('email') as string
-  const next    = (formData.get('next') as string) ?? '/dashboard/overview'
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    ''
+    try {
+      const supabase = createBrowserClient()
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/dashboard/overview')}`
 
-  if (!supabaseUrl || !supabaseKey) {
-    redirect(`/login?error=config&next=${encodeURIComponent(next)}`)
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirectTo },
+      })
+
+      if (otpError) {
+        setError('No se pudo enviar el enlace. Verifica el correo e intenta de nuevo.')
+      } else {
+        setSent(true)
+      }
+    } finally {
+      setLoading(false)
+    }
   }
-
-  const headersList = await headers()
-  const host = headersList.get('host') ?? 'localhost:3000'
-  const proto = host.startsWith('localhost') ? 'http' : 'https'
-  const siteUrl = `${proto}://${host}`
-
-  const cookieStore = await cookies()
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
-    cookies: {
-      getAll:  () => cookieStore.getAll(),
-      setAll: (cs) => cs.forEach(({ name, value, options }) =>
-        cookieStore.set(name, value, options)
-      ),
-    },
-  })
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  })
-
-  if (error) {
-    redirect(`/login?error=invalid&next=${encodeURIComponent(next)}`)
-  }
-
-  redirect(`/login?sent=1&email=${encodeURIComponent(email)}`)
-}
-
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ next?: string; error?: string; sent?: string; email?: string }>
-}) {
-  const params  = await searchParams
-  const next    = params.next ?? '/dashboard/overview'
-  const sent    = params.sent === '1'
-  const sentTo  = params.email ?? ''
-  const hasErr  = params.error === 'invalid' || params.error === 'callback'
-  const hasConfigErr = params.error === 'config'
 
   return (
     <div
@@ -102,17 +74,22 @@ export default async function LoginPage({
               Enlace enviado
             </p>
             <p className="text-[13px]" style={{ color: 'var(--fg-3)' }}>
-              Revisa tu correo{sentTo ? <> en <strong style={{ color: 'var(--fg-2)' }}>{sentTo}</strong></> : ''} y haz clic en el enlace para entrar.
+              Revisa tu correo en <strong style={{ color: 'var(--fg-2)' }}>{email}</strong> y haz clic en el enlace para entrar.
             </p>
             <p className="text-xs mt-4" style={{ color: 'var(--fg-4)' }}>
               El enlace expira en 1 hora.
             </p>
+            <button
+              onClick={() => { setSent(false); setEmail('') }}
+              className="mt-4 text-xs"
+              style={{ color: 'var(--fg-link)', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              Usar otro correo
+            </button>
           </div>
         ) : (
           /* ── Form state ── */
-          <form action={sendMagicLink} className="flex flex-col gap-3.5">
-            <input type="hidden" name="next" value={next} />
-
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
             <div>
               <label
                 className="block text-xs font-medium mb-1.5"
@@ -122,7 +99,8 @@ export default async function LoginPage({
               </label>
               <input
                 type="email"
-                name="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
                 autoFocus
@@ -131,21 +109,20 @@ export default async function LoginPage({
               />
             </div>
 
-            {hasErr && (
+            {error && (
               <p className="text-[13px] m-0" style={{ color: 'var(--danger)' }}>
-                {params.error === 'callback'
-                  ? 'El enlace expiró o ya fue usado. Solicita uno nuevo.'
-                  : 'Correo no reconocido o sin acceso.'}
+                {error}
               </p>
             )}
 
-            {hasConfigErr && (
-              <p className="text-[13px] m-0" style={{ color: 'var(--danger)' }}>
-                Faltan variables de Supabase en el entorno.
-              </p>
-            )}
-
-            <LoginButton label="Enviar enlace de acceso" />
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn--primary w-full justify-center mt-1"
+              style={{ opacity: loading ? 0.75 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+            >
+              {loading ? 'Enviando…' : 'Enviar enlace de acceso'}
+            </button>
           </form>
         )}
       </div>

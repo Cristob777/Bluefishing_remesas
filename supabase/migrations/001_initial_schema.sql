@@ -1,6 +1,6 @@
 -- ============================================================
 -- BLUEFISHING.CL — Initial Schema
--- MI TIENDA SPA · RUT 76.999.020-8
+-- Company: <CONFIGURED_VIA_ENV>
 -- ============================================================
 
 create extension if not exists "uuid-ossp";
