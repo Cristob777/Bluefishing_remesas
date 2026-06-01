@@ -30,9 +30,13 @@ function resolveRoleFromEnv(email: string): UserRole {
 }
 
 function supabase() {
+  // Accept both old name (ANON_KEY) and new Supabase name (PUBLISHABLE_KEY)
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    anonKey,
     { auth: { persistSession: false } },
   )
 }

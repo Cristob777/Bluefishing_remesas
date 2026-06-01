@@ -173,12 +173,19 @@ function ActionPreview({ alert }: { alert: AlertRow }) {
 export default async function OverviewPage() {
   const supabase = createServerClient()
   if (!supabase) {
+    const missingUrl = !process.env.NEXT_PUBLIC_SUPABASE_URL
+    const missingSR  = !process.env.SUPABASE_SERVICE_ROLE_KEY
+    const detail = [
+      missingUrl ? 'NEXT_PUBLIC_SUPABASE_URL' : null,
+      missingSR  ? 'SUPABASE_SERVICE_ROLE_KEY' : null,
+    ].filter(Boolean).join(', ') || 'NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY'
+
     return (
       <div className="flex min-h-full items-center justify-center p-8">
         <EmptyState
           icon={<Settings size={22} />}
           title="Configuración pendiente"
-          description="Faltan variables de Supabase para cargar el dashboard."
+          description={`Falta la variable de entorno: ${detail}. Agrégala en Vercel → Settings → Environment Variables.`}
         />
       </div>
     )

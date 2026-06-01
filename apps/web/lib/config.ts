@@ -16,7 +16,8 @@ const isServer = typeof window === 'undefined'
 export const config = {
   supabase: {
     url:         optional('NEXT_PUBLIC_SUPABASE_URL'),
-    anonKey:     optional('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+    // Accept both old name (ANON_KEY) and new Supabase name (PUBLISHABLE_KEY)
+    anonKey:     optional('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || optional('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
     serviceRole: isServer ? optional('SUPABASE_SERVICE_ROLE_KEY')   : '',
   },
   anthropic: {
