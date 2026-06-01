@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/supabase'
 import { z } from 'zod/v4'
 import { withRole, readJsonBody, type AuthUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
@@ -17,12 +17,6 @@ const Schema = z.object({
   })).optional(),
 })
 
-function sb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 export const POST = withRole(['owner', 'finance'], async (req: NextRequest, user: AuthUser) => {
   const limited = rateLimit(req, 'action', user.id)
@@ -44,7 +38,7 @@ export const POST = withRole(['owner', 'finance'], async (req: NextRequest, user
   }
 
   const { remesa_id, invoice, proveedor, texto_reclamo, diferencias } = parsed.data
-  const supabase = sb()
+  const supabase = db
 
   try {
     const { data: doc, error: docError } = await supabase

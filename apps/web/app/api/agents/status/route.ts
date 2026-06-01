@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { withAuth, type AuthUser } from '@/lib/auth'
@@ -10,10 +10,7 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
   if (limited) return limited
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
+    const supabase = db
 
     const agentNames = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'landed_cost']
 

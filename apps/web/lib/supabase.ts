@@ -1,23 +1,34 @@
 import { createClient } from '@supabase/supabase-js'
+import { config } from './config'
 
-const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-const supabaseService = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-// Support both old ANON_KEY and new PUBLISHABLE_KEY (Supabase renamed it)
-const supabaseAnon    =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  ''
+/**
+ * Single source of truth for all Supabase clients.
+ *
+ * Three surfaces:
+ *   db              — service-role singleton for server routes and agents
+ *   createBrowserClient() — anon-key client for browser components
+ *   getSupabaseAnonKey()  — helper for modules that build their own client
+ */
 
-// Server-side singleton — service role, full access (API routes + agents)
-export const db = supabaseUrl && supabaseService
-  ? createClient(supabaseUrl, supabaseService, { auth: { persistSession: false } })
-  : null as never
-
-// Browser client — anon/publishable key, subject to RLS (dashboard pages)
-export function createBrowserClient() {
-  return createClient(supabaseUrl, supabaseAnon)
+/** Accepts both the old ANON_KEY and the new PUBLISHABLE_KEY name. */
+export function getSupabaseAnonKey(): string {
+  return config.supabase.anonKey
 }
 
-// Legacy aliases — keep during migration
-export const supabase       = db
+// Server-side singleton — service role, full access (API routes + agents).
+// null as never = "typed away" so callers don't need null checks, but a
+// runtime null here means SUPABASE_SERVICE_ROLE_KEY is missing in env.
+export const db = config.supabase.url && config.supabase.serviceRole
+  ? createClient(config.supabase.url, config.supabase.serviceRole, {
+      auth: { persistSession: false },
+    })
+  : (null as never)
+
+// Browser client — anon key, subject to RLS (login + client dashboard pages).
+export function createBrowserClient() {
+  return createClient(config.supabase.url, getSupabaseAnonKey())
+}
+
+// Legacy aliases — kept so existing imports don't break during migration.
+export const supabase           = db
 export const createServerClient = () => db

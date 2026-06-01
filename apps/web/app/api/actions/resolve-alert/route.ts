@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/supabase'
 import { z } from 'zod/v4'
 import { withAuth, readJsonBody, type AuthUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
@@ -10,12 +10,6 @@ const Schema = z.object({
   action:   z.enum(['dismiss', 'escalate']),
 })
 
-function sb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
   const limited = rateLimit(req, 'action', user.id)
@@ -37,7 +31,7 @@ export const POST = withAuth(async (req: NextRequest, user: AuthUser) => {
   }
 
   const { alert_id, action } = parsed.data
-  const supabase = sb()
+  const supabase = db
 
   try {
     if (action === 'dismiss') {

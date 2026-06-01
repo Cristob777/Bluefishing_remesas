@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { getAuthUrl } from '@/lib/services/gmail-extractor'
+import { db, getSupabaseAnonKey } from '@/lib/supabase'
 
-function sb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
+// Alias so the rest of the file doesn't need to change
+const sb = () => db
 
 // GET /api/gmail-auth?account=sebastian
 // Requires active dashboard session (cookie auth).
@@ -19,8 +15,7 @@ export async function GET(req: NextRequest) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
+    getSupabaseAnonKey(),
     {
       cookies: {
         getAll:  () => cookieStore.getAll(),

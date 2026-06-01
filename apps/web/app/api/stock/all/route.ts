@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/supabase'
 import { withAuth, type AuthUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
 
@@ -8,10 +8,7 @@ export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
   if (limited) return limited
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
+    const supabase = db
 
     const { data, error } = await supabase
       .from('stock_recepciones')

@@ -1,20 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/supabase'
 import { withAuth, type AuthUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
 
-function sb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 export const GET = withAuth(async (req: NextRequest, user: AuthUser) => {
   const limited = rateLimit(req, 'read', user.id)
   if (limited) return limited
 
-  const supabase = sb()
+  const supabase = db
   const actions: unknown[] = []
 
   try {
