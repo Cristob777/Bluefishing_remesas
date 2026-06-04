@@ -42,9 +42,10 @@ SELECT monto FROM documentos
 WHERE remesa_id = '<remesa_id>' AND tipo = 'FACTURA_AGENSA'
 
 **Paso 5** — Calcula costo de aduana total:
-costo_aduana_total_clp = derechos_aduana + iva + honorarios_agensa + gastos_portuarios
+# IVA importación va al F29 — NUNCA al landed cost (WORKFLOW.md §5 inv.3)
+costo_aduana_total_clp = derechos_aduana + honorarios_agensa + gastos_portuarios
 
-(Si solo tienes el total del DIN: costo_aduana_total_clp = total_din_clp - valor_mercaderia_clp_segun_din)
+(Si solo tienes el total del DIN: costo_aduana_total_clp = total_din_clp - valor_mercaderia_clp_segun_din - iva_clp)
 
 **Paso 6** — Carga los ítems de stock:
 SELECT sku, descripcion, cantidad_invoice, cantidad_recibida, precio_unitario_usd
