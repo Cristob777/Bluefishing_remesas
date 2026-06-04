@@ -1,5 +1,6 @@
 import { runAgentLoop } from './runner'
 import { supabaseTool, fxRateTool, toolHandlers } from './tools'
+import { STEP5_IVA_NOTE, STEP5_FORMULA, STEP5_ALT_FORMULA } from './landed-cost-invariants'
 
 const SYSTEM_PROMPT = `Eres el agente de cálculo de costo de desembarco (landed cost) para BLUEFISHING.CL.
 
@@ -42,10 +43,10 @@ SELECT monto FROM documentos
 WHERE remesa_id = '<remesa_id>' AND tipo = 'FACTURA_AGENSA'
 
 **Paso 5** — Calcula costo de aduana total:
-# IVA importación va al F29 — NUNCA al landed cost (WORKFLOW.md §5 inv.3)
-costo_aduana_total_clp = derechos_aduana + honorarios_agensa + gastos_portuarios
+${STEP5_IVA_NOTE}
+${STEP5_FORMULA}
 
-(Si solo tienes el total del DIN: costo_aduana_total_clp = total_din_clp - valor_mercaderia_clp_segun_din - iva_clp)
+(Si solo tienes el total del DIN: ${STEP5_ALT_FORMULA})
 
 **Paso 6** — Carga los ítems de stock:
 SELECT sku, descripcion, cantidad_invoice, cantidad_recibida, precio_unitario_usd

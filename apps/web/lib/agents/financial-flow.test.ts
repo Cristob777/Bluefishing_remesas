@@ -12,87 +12,15 @@
  */
 
 import { describe, it, expect } from 'vitest'
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Pure calculation helpers (mirrors agent logic in landed-cost.ts prompt)
-//  These are the invariants the LLM agent must follow. Tests document them
-//  and can be used to validate any future refactor.
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface Pago { montoOrigen: number; fx: number }
-
-/** FX promedio ponderado = Σ(monto_i × fx_i) / Σ(monto_i) */
-function fxPonderado(pagos: Pago[]): number {
-  const totalMonto = pagos.reduce((s, p) => s + p.montoOrigen, 0)
-  if (totalMonto === 0) return 0
-  return pagos.reduce((s, p) => s + p.montoOrigen * p.fx, 0) / totalMonto
-}
-
-interface ItemSKU {
-  sku:                 string
-  cantidadRecibida:    number  // ← WORKFLOW: use this, NOT cantidadInvoice
-  cantidadInvoice:     number
-  precioUnitarioUSD:   number
-}
-
-interface DIN {
-  valorMercaderiaClp:  number
-  derechosAduanaClp:   number
-  ivaImportClp:        number  // ← NEVER enters landed cost (goes to F29)
-  honorariosAgensaClp: number
-  gastosPorClp:        number
-}
-
-/** Total costo aduana sin IVA (IVA va al F29, no al landed cost) */
-function costoAduanaSinIVA(din: DIN): number {
-  return din.derechosAduanaClp + din.honorariosAgensaClp + din.gastosPorClp
-  // IVA excluido intencionalmente
-}
-
-interface LandedCostResult {
-  sku:                      string
-  cantidadRecibida:         number
-  fobCLP:                   number
-  aduanaCLP:                number
-  landedCostTotalCLP:       number
-  landedCostUnitarioCLP:    number
-}
-
-function calcularLandedCost(
-  items:             ItemSKU[],
-  fxPromedio:        number,
-  costoAduanaTotal:  number,  // must NOT include IVA
-): LandedCostResult[] {
-  // Peso por FOB USD usando cantidad_recibida
-  const totalFOBUSD = items.reduce((s, i) => s + i.cantidadRecibida * i.precioUnitarioUSD, 0)
-
-  return items.map(item => {
-    const fobItemUSD   = item.cantidadRecibida * item.precioUnitarioUSD
-    const fobItemCLP   = fobItemUSD * fxPromedio
-    const proporcion   = totalFOBUSD > 0 ? fobItemUSD / totalFOBUSD : 0
-    const aduanaItem   = costoAduanaTotal * proporcion
-    const total        = fobItemCLP + aduanaItem
-    const unitario     = item.cantidadRecibida > 0 ? total / item.cantidadRecibida : 0
-
-    return {
-      sku:                     item.sku,
-      cantidadRecibida:        item.cantidadRecibida,
-      fobCLP:                  fobItemCLP,
-      aduanaCLP:               aduanaItem,
-      landedCostTotalCLP:      total,
-      landedCostUnitarioCLP:   unitario,
-    }
-  })
-}
-
-/** Reconciliation decision per WORKFLOW.md §4 Etapa 5 */
-function reconciliar(provisionPagada: number, costoReal: number): 'RECONCILIADO' | 'DIFERENCIA_SIGNIFICATIVA' | 'SALDO_FAVOR' {
-  const TOLERANCIA = 50_000
-  const diff = costoReal - provisionPagada
-  if (Math.abs(diff) <= TOLERANCIA) return 'RECONCILIADO'
-  if (diff > 0)                      return 'DIFERENCIA_SIGNIFICATIVA'
-  return 'SALDO_FAVOR'
-}
+import {
+  fxPonderado,
+  costoAduanaSinIVA,
+  calcularLandedCost,
+  reconciliar,
+  STEP5_FORMULA,
+  STEP5_ALT_FORMULA,
+  type DIN,
+} from './landed-cost-invariants'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  1. FX weighted average
@@ -300,5 +228,34 @@ describe('Prorrateo de aduana por valor FOB (WORKFLOW §4 Etapa 5)', () => {
     const res = calcularLandedCost(items, 900, 400_000)
     expect(res[0].aduanaCLP).toBeCloseTo(100_000, 0) // 25%
     expect(res[1].aduanaCLP).toBeCloseTo(300_000, 0) // 75%
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Regression: IVA exclusion — fails immediately if IVA re-enters landed cost
+//  These tests guard the *prompt constants* in landed-cost-invariants.ts.
+//  If STEP5_FORMULA is ever changed to include '+ iva', this fails first.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Regression: IVA exclusion — falla si IVA vuelve al landed cost (WORKFLOW.md §5 inv.3)', () => {
+  it('STEP5_FORMULA no suma IVA', () => {
+    expect(STEP5_FORMULA).not.toMatch(/\+\s*iva\b/i)
+  })
+
+  it('STEP5_ALT_FORMULA resta IVA (no lo suma)', () => {
+    expect(STEP5_ALT_FORMULA).toMatch(/-\s*iva_clp/i)
+    expect(STEP5_ALT_FORMULA).not.toMatch(/\+\s*iva\b/i)
+  })
+
+  it('costoAduanaSinIVA excluye el ivaImportClp del total', () => {
+    const din: DIN = {
+      valorMercaderiaClp:  0,
+      derechosAduanaClp:   60_000,
+      ivaImportClp:        110_000,
+      honorariosAgensaClp: 30_000,
+      gastosPorClp:        10_000,
+    }
+    expect(costoAduanaSinIVA(din)).toBe(100_000)
+    expect(costoAduanaSinIVA(din)).not.toBe(100_000 + din.ivaImportClp)
   })
 })
