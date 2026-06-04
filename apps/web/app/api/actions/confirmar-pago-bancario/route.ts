@@ -4,6 +4,7 @@ import { z } from 'zod/v4'
 import { withRole, readJsonBody, type AuthUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/rateLimit'
 import { safeError } from '@/lib/errors'
+import { handleGetFxRate } from '@/lib/agents/tools'
 
 const Schema = z.object({
   pago_id:            z.string().uuid(),
@@ -67,6 +68,17 @@ export const POST = withRole(['finance', 'owner'], async (req: NextRequest, user
 
     if (error) throw error
 
+    // Best-effort: persist FX rate at confirmation time so landed_cost agent
+    // can skip the retroactive CMF call. If CMF is unreachable, pago is still
+    // confirmed and the agent fetches retroactively — no error propagated.
+    const monedaPago = pago?.moneda
+    if (monedaPago) {
+      const fxResult = await handleGetFxRate({ moneda: monedaPago, fecha: fecha_confirmacion })
+      if (fxResult.tasa_clp) {
+        await supabase.from('pagos').update({ fx_rate: fxResult.tasa_clp }).eq('id', pago_id)
+      }
+    }
+
     const rid = remesa_id ?? pago?.remesa_id ?? existing?.remesa_id
     if (rid) {
       const { data: pendientes } = await supabase
@@ -80,6 +92,14 @@ export const POST = withRole(['finance', 'owner'], async (req: NextRequest, user
           .from('remesas')
           .update({ estado: 'PAGO_COMPLETO', updated_at: new Date().toISOString() })
           .eq('id', rid)
+      } else if (pendientes && pendientes.length > 0) {
+        // At least one pago confirmed, others still pending → partial payment state.
+        // .in() guard prevents overriding states beyond the payment phase (EN_ADUANA+).
+        await supabase
+          .from('remesas')
+          .update({ estado: 'PAGO_PARCIAL', updated_at: new Date().toISOString() })
+          .eq('id', rid)
+          .in('estado', ['PAGO_PENDIENTE', 'PAGO_PARCIAL'])
       }
     }
 
