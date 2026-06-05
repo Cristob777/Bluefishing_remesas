@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { OnboardingHero } from '@/components/ui/OnboardingHero'
 import { GmailErrorBanner } from '@/components/ui/GmailErrorBanner'
 import { AgentStrip, Confidence, KpiCard, Section, StatusPill } from '@/components/dashboard/Kit'
+import { DemoTrigger } from '@/components/demo/DemoTrigger'
 
 export const dynamic = 'force-dynamic'
 
@@ -236,6 +237,12 @@ export default async function OverviewPage() {
     return (
       <div className="min-h-full">
         {gmailBroken && <GmailErrorBanner lastErrorAt={lastImapLog?.created_at} />}
+        <div className="px-8 pt-8 flex items-center gap-3">
+          <DemoTrigger fixtureId="invoice-cn-1" />
+          <span className="text-[12px]" style={{ color: 'var(--fg-4)' }}>
+            Haz click para procesar un correo de ejemplo y ver el pipeline en acción.
+          </span>
+        </div>
         <OnboardingHero
           companyName={process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'tu empresa'}
           steps={[
@@ -277,7 +284,8 @@ export default async function OverviewPage() {
             {pendingTotal} acciones pendientes y {rActive.count ?? 0} remesas activas · {today}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <DemoTrigger fixtureId="invoice-cn-1" />
           <button className="btn btn--ghost">
             <Calendar size={13} strokeWidth={1.75} />
             Últimos 7 días
