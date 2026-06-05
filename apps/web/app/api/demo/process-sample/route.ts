@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+
+// Claude Opus makes ~6 sequential tool calls — allow up to 120s on Vercel
+export const maxDuration = 120
 import { z } from 'zod/v4'
 import { db } from '@/lib/supabase'
 import { triggerAgent, categoryToAgent } from '@/lib/managed-agents'
