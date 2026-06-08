@@ -5,7 +5,7 @@ import { Columns, Download, Filter, Plus, X, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/TableSkeleton'
-import { FilterChip, PageHeader, StatusPill } from '@/components/dashboard/Kit'
+import { FilterChip, StatusPill } from '@/components/dashboard/Kit'
 import { createBrowserClient } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 
@@ -452,25 +452,28 @@ export default function RemesasPage() {
 
   return (
     <div className="dashboard-page--wide animate-fade-in">
-      <PageHeader
-        title="Remesas"
-        subtitle={`${remesas.length} remesas · ${remesas.filter(r => r.estado !== 'RECONCILIADO').length} activas`}
-        actions={
-          <>
-            <button className="btn btn--secondary">
-              <Download size={13} strokeWidth={1.75} />
-              Exportar CSV
-            </button>
-            <button className="btn btn--primary">
-              <Plus size={13} strokeWidth={1.75} />
-              Nueva remesa
-            </button>
-          </>
-        }
-      />
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h1 className="t-h1" style={{ margin: 0, marginBottom: 4 }}>Remesas</h1>
+          <div style={{ fontSize: 13, color: 'var(--fg-3)' }}>
+            {remesas.length} remesas · {remesas.filter(r => r.estado !== 'RECONCILIADO').length} activas
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn--secondary">
+            <Download size={13} strokeWidth={1.75} />
+            Exportar CSV
+          </button>
+          <button className="btn btn--primary">
+            <Plus size={13} strokeWidth={1.75} />
+            Nueva remesa
+          </button>
+        </div>
+      </div>
 
       {/* Filter chips */}
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         {FILTER_GROUPS.map((g, idx) => {
           const count = g.estados
             ? remesas.filter(r => g.estados!.includes(r.estado)).length
@@ -486,7 +489,7 @@ export default function RemesasPage() {
             </FilterChip>
           )
         })}
-        <div className="flex-1" />
+        <div style={{ flex: 1 }} />
         <button className="btn btn--ghost btn--sm"><Filter size={12} strokeWidth={1.75} />Filtros</button>
         <button className="btn btn--ghost btn--sm"><Columns size={12} strokeWidth={1.75} />Columnas</button>
       </div>
@@ -494,15 +497,14 @@ export default function RemesasPage() {
       {/* Attention banner */}
       {attention.length > 0 && (
         <div
-          className="flex gap-3 rounded-xl px-4 py-3 mb-4"
-          style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}
+          style={{ display: 'flex', gap: 12, borderRadius: 12, padding: '10px 16px', marginBottom: 16, background: 'var(--warning-bg)', border: '1px solid var(--warning-border)' }}
         >
-          <AlertTriangle size={16} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+          <AlertTriangle size={16} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
           <div>
-            <p className="text-xs font-semibold mb-1" style={{ color: '#D97706' }}>Requiere atención</p>
+            <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--warning-text)' }}>Requiere atención</p>
             {attention.map(r => (
-              <p key={r.id} className="text-xs" style={{ color: '#525252' }}>
-                <span className="mono font-semibold" style={{ color: '#B45309' }}>{r.numero_invoice}</span>
+              <p key={r.id} style={{ fontSize: 12, color: 'var(--fg-2)' }}>
+                <span className="tnum" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--warning-text)' }}>{r.numero_invoice}</span>
                 {' '}— {r.notas}
               </p>
             ))}
@@ -511,7 +513,7 @@ export default function RemesasPage() {
       )}
 
       {/* Table */}
-      <div className="card overflow-hidden p-0">
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
           <TableSkeleton rows={6} cols={7} />
         ) : filtered.length === 0 ? (
@@ -522,77 +524,111 @@ export default function RemesasPage() {
             action={filter !== 0 ? { label: 'Ver todas', onClick: () => setFilter(0) } : { label: 'Conectar Gmail', href: '/api/gmail-auth' }}
           />
         ) : (
-          <div className="overflow-auto max-h-[70vh]">
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Factura</th>
-                <th>Proveedor</th>
-                <th className="num">Monto</th>
-                <th>Condición</th>
-                <th>Estado</th>
-                <th>Avance</th>
-                <th>Despacho</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r, idx) => {
-                const isUrgent = r.alertas?.some(a => a.urgente && !a.leida)
-                return (
-                  <motion.tr
-                    key={r.id}
-                    layout
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(idx * 0.02, 0.3), duration: 0.25 }}
-                    className={idx === 0 ? 'is-selected cursor-pointer' : 'cursor-pointer'}
-                    onClick={() => setSelected(r)}
-                    style={isUrgent ? { borderLeft: '2px solid #DC2626', background: 'rgba(254,242,242,0.3)' } : {}}
-                  >
-                    <td>
-                      <span className="tnum inline-flex items-center gap-1.5 font-medium" style={{ color: 'var(--fg-1)' }}>
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--agent)' }} />
-                        {r.numero_invoice}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <p className="text-xs font-semibold leading-tight" style={{ color: 'var(--fg-1)' }}>
-                            {r.proveedor?.nombre ?? '—'}
-                          </p>
-                          <p className="text-[10px]" style={{ color: 'var(--fg-4)' }}>{r.proveedor?.pais}</p>
+          <div style={{ overflow: 'auto', maxHeight: '70vh' }}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th style={{ width: 32 }}><input type="checkbox" /></th>
+                  <th>Remesa</th>
+                  <th>Proveedor</th>
+                  <th>Estado</th>
+                  <th>Avance</th>
+                  <th className="num">Monto</th>
+                  <th>Creada</th>
+                  <th style={{ width: 28 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r, idx) => {
+                  const isUrgent = r.alertas?.some(a => a.urgente && !a.leida)
+                  const progress = PIPELINE.indexOf(r.estado)
+                  const safeIdx = progress >= 0 ? progress : 0
+                  const pct = Math.round(((safeIdx + 1) / PIPELINE.length) * 100)
+                  const progressBg = r.estado === 'RECONCILIADO' ? 'var(--success)' : r.estado === 'SALDO_FAVOR' ? 'var(--warning)' : 'var(--accent)'
+                  return (
+                    <motion.tr
+                      key={r.id}
+                      layout
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(idx * 0.02, 0.3), duration: 0.25 }}
+                      className={idx === 0 ? 'is-selected' : ''}
+                      onClick={() => setSelected(r)}
+                      style={{ cursor: 'pointer', ...(isUrgent ? { background: 'rgba(254,242,242,0.3)' } : {}) }}
+                    >
+                      <td onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" defaultChecked={idx === 0} />
+                      </td>
+                      <td>
+                        <span
+                          className="tnum"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-1)', fontWeight: 500 }}
+                        >
+                          <span
+                            title="Toque de agente"
+                            style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--agent)', flexShrink: 0 }}
+                          />
+                          {r.numero_invoice}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-1)', lineHeight: 1.3 }}>
+                          {r.proveedor?.nombre ?? '—'}
                         </div>
-                      </div>
-                    </td>
-                    <td className="num">
-                      <span className="tnum font-semibold">
-                        {fmtMonto(r.monto_original, r.moneda_origen)}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="tnum rounded-md px-2 py-0.5 text-xs" style={{ background: 'var(--bg-subtle)', color: 'var(--fg-2)', border: '1px solid var(--border-default)' }}>
-                        {r.condicion_pago ?? '—'}
-                      </span>
-                    </td>
-                    <td>
-                      <StatusPill variant={ESTADO_PILL[r.estado] ?? 'idle'}>
-                        {ESTADO_LABELS[r.estado] ?? r.estado}
-                      </StatusPill>
-                    </td>
-                    <td>
-                      <PipelineBar estado={r.estado} />
-                    </td>
-                    <td>
-                      <span className="tnum text-xs" style={{ color: 'var(--fg-4)' }}>
-                        {r.numero_despacho ?? '—'}
-                      </span>
-                    </td>
-                  </motion.tr>
-                )
-              })}
-            </tbody>
-          </table>
+                        {r.proveedor?.pais && (
+                          <div style={{ fontSize: 10, color: 'var(--fg-4)' }}>{r.proveedor.pais}</div>
+                        )}
+                      </td>
+                      <td>
+                        <StatusPill variant={ESTADO_PILL[r.estado] ?? 'idle'}>
+                          {ESTADO_LABELS[r.estado] ?? r.estado}
+                        </StatusPill>
+                      </td>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <span
+                            style={{
+                              width: 76,
+                              height: 4,
+                              background: 'var(--bg-muted)',
+                              borderRadius: 999,
+                              overflow: 'hidden',
+                              display: 'inline-block',
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: 'block',
+                                height: '100%',
+                                background: progressBg,
+                                width: `${pct}%`,
+                                borderRadius: 999,
+                              }}
+                            />
+                          </span>
+                          <span className="tnum" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                            {pct}%
+                          </span>
+                        </span>
+                      </td>
+                      <td className="num">
+                        <span className="tnum" style={{ fontWeight: 600 }}>
+                          {fmtMonto(r.monto_original, r.moneda_origen)}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>
+                          {new Date(r.created_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ color: 'var(--fg-4)', display: 'inline-flex', alignItems: 'center' }}>›</span>
+                      </td>
+                    </motion.tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

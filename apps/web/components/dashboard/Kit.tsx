@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react'
+'use client'
+
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { Sparkles } from 'lucide-react'
 
 export function PageHeader({
@@ -43,16 +45,47 @@ export function Section({
   )
 }
 
+// Count-up animation hook — easeOutCubic, 800ms
+function useCountUp(target: number, duration = 800) {
+  const [val, setVal] = useState(0)
+  const rafRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (typeof target !== 'number' || isNaN(target)) return
+    const startTime = performance.now()
+    const startVal = 0
+
+    function tick(now: number) {
+      const elapsed = now - startTime
+      const t = Math.min(1, elapsed / duration)
+      const eased = 1 - Math.pow(1 - t, 3) // easeOutCubic
+      setVal(startVal + (target - startVal) * eased)
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    }
+  }, [target, duration])
+
+  return val
+}
+
 export function KpiCard({
   label,
   value,
   delta,
   tone = 'neutral',
+  animate = true,
 }: {
   label: string
   value: ReactNode
   delta?: string
   tone?: 'neutral' | 'warning' | 'danger' | 'success'
+  animate?: boolean
 }) {
   const toneColor = {
     neutral: 'var(--fg-3)',
@@ -61,16 +94,52 @@ export function KpiCard({
     success: 'var(--success)',
   }[tone]
 
+  // Try to extract number from value for count-up
+  const rawStr = String(value ?? '')
+  const numeric = parseFloat(rawStr.replace(/[^0-9.-]/g, ''))
+  const prefix = rawStr.match(/^[^0-9.-]+/)?.[0] ?? ''
+  const suffix = rawStr.match(/[^0-9.,]+$/)?.[0] ?? ''
+  const hasNumeric = !isNaN(numeric)
+
+  const animatedNum = useCountUp(animate && hasNumeric ? numeric : 0)
+  const displayValue =
+    animate && hasNumeric
+      ? `${prefix}${Math.round(animatedNum).toLocaleString('en-US')}${suffix}`
+      : value
+
   return (
-    <div className="card flex flex-col gap-1 px-[18px] py-4">
+    <div
+      className="anim-slide-up flex flex-col gap-1"
+      style={{
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: '16px 18px',
+        boxShadow: 'var(--shadow-xs)',
+        transition: 'border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border-strong)'
+        e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border-default)'
+        e.currentTarget.style.boxShadow = 'var(--shadow-xs)'
+      }}
+    >
       <div className="t-micro">{label}</div>
-      <div className="tnum text-[28px] font-semibold leading-tight" style={{ color: 'var(--fg-1)' }}>
-        {value}
+      <div className="tnum" style={{ fontSize: 28, lineHeight: 1.15, fontWeight: 600, color: 'var(--fg-1)' }}>
+        {displayValue}
       </div>
-      {delta && <div className="text-xs" style={{ color: toneColor }}>{delta}</div>}
+      {delta && (
+        <div style={{ fontSize: 12, color: toneColor }}>{delta}</div>
+      )}
     </div>
   )
 }
+
+// KpiCard alias for backwards compat
+export { KpiCard as KPI }
 
 export function StatusPill({
   variant = 'idle',
@@ -108,7 +177,10 @@ export function FilterChip({
 
 export function AgentStrip({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return (
-    <span className="agent-strip" style={compact ? { padding: '4px 8px', fontSize: 11 } : undefined}>
+    <span
+      className="agent-strip"
+      style={compact ? { padding: '4px 8px', fontSize: 11 } : undefined}
+    >
       <span className="sparkle" style={{ display: 'inline-flex' }}>
         <Sparkles size={12} strokeWidth={1.75} />
       </span>
@@ -128,5 +200,70 @@ export function Confidence({ value }: { value: number }) {
       </span>
       <span>{pct}%</span>
     </span>
+  )
+}
+
+export function Tabs({
+  items,
+  active,
+  onChange,
+}: {
+  items: Array<{ key: string; label: string; count?: number }>
+  active: string
+  onChange: (key: string) => void
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 4,
+        borderBottom: '1px solid var(--border-default)',
+        marginBottom: 18,
+      }}
+    >
+      {items.map((it) => {
+        const isActive = it.key === active
+        return (
+          <button
+            key={it.key}
+            type="button"
+            onClick={() => onChange(it.key)}
+            style={{
+              background: 'transparent',
+              border: 0,
+              padding: '10px 14px',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+              fontSize: 13,
+              fontWeight: 500,
+              color: isActive ? 'var(--fg-1)' : 'var(--fg-3)',
+              borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+              marginBottom: -1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'color 120ms var(--ease-out), border-color 120ms var(--ease-out)',
+            }}
+          >
+            {it.label}
+            {typeof it.count === 'number' && (
+              <span
+                style={{
+                  background: isActive ? 'var(--accent-bg)' : 'var(--bg-subtle)',
+                  color: isActive ? 'var(--accent-text)' : 'var(--fg-3)',
+                  fontSize: 10,
+                  fontWeight: 500,
+                  padding: '1px 7px',
+                  borderRadius: 999,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {it.count}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
   )
 }

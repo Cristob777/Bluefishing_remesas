@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { Sparkles } from 'lucide-react'
-import { AgentStrip, PageHeader } from '@/components/dashboard/Kit'
+import { AgentStrip, Tabs } from '@/components/dashboard/Kit'
 import {
   type PendingAction,
   type InstruccionPagoAction,
@@ -887,26 +887,46 @@ export default function ActionsPage() {
 
   return (
     <div className="dashboard-page--wide min-h-full animate-fade-in">
-      <PageHeader
-        title="Acciones"
-        subtitle="Ventanilla de decisión humana · pagos, aduana, stock y cierre"
-        actions={
-          <>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h1 className="t-h1" style={{ margin: 0, marginBottom: 4 }}>Acciones</h1>
+          <div style={{ fontSize: 13, color: 'var(--fg-3)' }}>
+            {pending} acciones pendientes{urgent > 0 ? ` · ${urgent} urgente${urgent > 1 ? 's' : ''}` : ''}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
           <span
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
-            style={pending > 0 ? { background: '#F5F5F4', color: '#525252', border: '1px solid #E7E5E4' } : { background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+              ...(pending > 0
+                ? { background: 'var(--bg-subtle)', color: 'var(--fg-2)', border: '1px solid var(--border-default)' }
+                : { background: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)' }),
+            }}
           >
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot inline-block" style={{ background: pending > 0 ? '#525252' : '#059669' }} />
+            <span
+              className="inline-block"
+              style={{
+                width: 6, height: 6, borderRadius: 999,
+                background: pending > 0 ? 'var(--fg-4)' : 'var(--success)',
+                animation: pending > 0 ? undefined : 'bf-pulse-green 2.4s ease-out infinite',
+              }}
+            />
             {pending > 0 ? `${pending} pendientes` : 'Todo al día'}
           </span>
           {urgent > 0 && (
-            <span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+            <span
+              style={{
+                padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)',
+              }}
+            >
               {urgent} urgente{urgent > 1 ? 's' : ''}
             </span>
           )}
-          </>
-        }
-      />
+        </div>
+      </div>
 
       {loading && (
         <div className="space-y-3">
@@ -916,37 +936,13 @@ export default function ActionsPage() {
 
       {!loading && pending > 0 && (
         <>
-          <div className="mb-[18px] flex gap-1 border-b" style={{ borderColor: 'var(--border-default)' }}>
-            {tabs.map(tab => {
-              const active = tab.key === filter
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setFilter(tab.key)}
-                  className="inline-flex items-center gap-1.5 border-b-2 px-3.5 py-2.5 text-[13px] font-medium transition-colors"
-                  style={{
-                    borderColor: active ? 'var(--accent)' : 'transparent',
-                    color: active ? 'var(--fg-1)' : 'var(--fg-3)',
-                    marginBottom: -1,
-                  }}
-                >
-                  {tab.label}
-                  <span
-                    className="rounded-full px-[7px] py-px text-[10px] tnum"
-                    style={{
-                      background: active ? 'var(--accent-bg)' : 'var(--bg-subtle)',
-                      color: active ? 'var(--accent-text)' : 'var(--fg-3)',
-                    }}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+          <Tabs
+            items={tabs}
+            active={filter}
+            onChange={(key) => setFilter(key as ActionFilter)}
+          />
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(390px,0.9fr)]">
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, alignItems: 'start' }}>
             <div className="stagger-children flex flex-col gap-2.5">
               {filteredItems.map(({ action, status }) => {
                 const meta = META[action.type]
@@ -996,7 +992,7 @@ export default function ActionsPage() {
               })}
             </div>
 
-            <div className="self-start xl:sticky xl:top-[72px]">
+            <div style={{ position: 'sticky', top: 72, alignSelf: 'start' }}>
               {selectedState ? (
                 <div className="card overflow-hidden p-0">
                   <div className="card__header">

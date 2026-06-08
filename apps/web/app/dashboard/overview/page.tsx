@@ -10,7 +10,7 @@ import {
   Package,
   Settings,
   ShieldCheck,
-  Zap,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { createServerClient } from '@/lib/supabase'
@@ -150,22 +150,47 @@ function progressColor(estado: string) {
 }
 
 function ActionPreview({ alert }: { alert: AlertRow }) {
+  const tone = alert.urgente ? 'var(--danger)' : 'var(--warning)'
   return (
-    <div className="grid overflow-hidden rounded-xl border bg-white" style={{ gridTemplateColumns: '4px 1fr auto', borderColor: 'var(--border-default)', boxShadow: 'var(--shadow-xs)' }}>
-      <div style={{ background: alert.urgente ? 'var(--danger)' : 'var(--warning)' }} />
-      <div className="px-4 py-3">
-        <div className="mb-1 flex items-center gap-2">
-          <span className={`badge ${alert.urgente ? 'badge--red' : 'badge--amber'}`}><span className="dot" />{alert.urgente ? 'Urgente' : 'Revisión'}</span>
-          <span className="tnum text-[11px]" style={{ color: 'var(--fg-4)' }}>{relTime(alert.created_at)}</span>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '4px 1fr auto',
+        overflow: 'hidden',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        boxShadow: 'var(--shadow-xs)',
+      }}
+    >
+      <div style={{ background: tone }} />
+      <div style={{ padding: '12px 16px' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+          <span
+            className={`badge ${alert.urgente ? 'badge--red' : 'badge--amber'}`}
+            style={alert.urgente ? { background: 'var(--danger-bg)', color: 'var(--danger-text)', borderColor: 'var(--danger-border)' } : undefined}
+          >
+            <span className="dot" />
+            {alert.urgente ? 'Urgente' : 'Revisión'}
+          </span>
+          <span className="tnum" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-4)' }}>
+            {alert.tipo.replace(/_/g, ' ')}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--fg-4)', marginLeft: 'auto' }}>{relTime(alert.created_at)}</span>
         </div>
-        <div className="mb-1 text-sm font-semibold" style={{ color: 'var(--fg-1)' }}>{alert.tipo.replace(/_/g, ' ')}</div>
-        <p className="max-w-[760px] truncate text-xs" style={{ color: 'var(--fg-2)' }}>{alert.mensaje}</p>
-        <div className="mt-2">
-          <AgentStrip compact>Requiere decisión humana con evidencia antes de cerrar el expediente.</AgentStrip>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-1)', marginBottom: 4 }}>
+          {alert.tipo.replace(/_/g, ' ')}
         </div>
+        <p style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 8, maxWidth: 760 }} className="truncate">
+          {alert.mensaje}
+        </p>
+        <AgentStrip compact>Requiere decisión humana con evidencia antes de cerrar el expediente.</AgentStrip>
       </div>
-      <div className="flex items-center gap-2 px-3">
-        <Link href="/dashboard/actions" className="btn btn--primary btn--sm">Resolver</Link>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 14px', gap: 6 }}>
+        <button className="btn btn--ghost btn--sm">Posponer</button>
+        <Link href="/dashboard/actions" className={`btn btn--sm ${alert.urgente ? 'btn--danger' : 'btn--primary'}`}>
+          Resolver
+        </Link>
       </div>
     </div>
   )
@@ -277,14 +302,17 @@ export default async function OverviewPage() {
     <div className="dashboard-page">
       {gmailBroken && <GmailErrorBanner lastErrorAt={lastImapLog?.created_at} />}
 
-      <div className="mb-6 flex items-end justify-between">
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 className="t-h1 m-0 mb-1">{greeting()}, {ownerName}</h1>
-          <p className="text-[13px] capitalize" style={{ color: 'var(--fg-3)' }}>
+          <h1 className="t-h1" style={{ margin: 0, marginBottom: 4 }}>
+            {greeting()}, {ownerName}
+          </h1>
+          <div style={{ fontSize: 13, color: 'var(--fg-3)' }} className="capitalize">
             {pendingTotal} acciones pendientes y {rActive.count ?? 0} remesas activas · {today}
-          </p>
+          </div>
         </div>
-        <div className="flex gap-2 items-center">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <DemoTrigger fixtureId="invoice-cn-1" />
           <button className="btn btn--ghost">
             <Calendar size={13} strokeWidth={1.75} />
@@ -297,16 +325,39 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      <div className="mb-7 grid grid-cols-4 gap-3">
-        <KpiCard label="Acciones pendientes" value={pendingTotal} delta={`${openAlerts} excepciones`} tone={pendingTotal > 0 ? 'warning' : 'success'} />
-        <KpiCard label="Remesas activas" value={rActive.count ?? 0} delta={`${remesasTotal} total`} />
-        <KpiCard label="Exposición USD" value={`$${totalUSD.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`} delta="abiertas" />
-        <KpiCard label="Exposición JPY" value={`¥${totalJPY.toLocaleString('ja-JP')}`} delta="abiertas" />
+      {/* KPI grid — 4 columns, 12px gap */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28 }}>
+        <KpiCard
+          label="Acciones pendientes"
+          value={pendingTotal}
+          delta={`${openAlerts} excepciones`}
+          tone={pendingTotal > 0 ? 'warning' : 'success'}
+        />
+        <KpiCard
+          label="Remesas activas"
+          value={rActive.count ?? 0}
+          delta={`${remesasTotal} total`}
+        />
+        <KpiCard
+          label="Exposición USD"
+          value={`$${totalUSD.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`}
+          delta="abiertas"
+        />
+        <KpiCard
+          label="Exposición JPY"
+          value={`¥${totalJPY.toLocaleString('ja-JP')}`}
+          delta="abiertas"
+        />
       </div>
 
+      {/* Acciones pendientes */}
       <Section
         title="Acciones pendientes"
-        action={<Link href="/dashboard/actions" className="btn btn--ghost btn--sm">Ver todas <ArrowRight size={12} /></Link>}
+        action={
+          <Link href="/dashboard/actions" className="btn btn--ghost btn--sm">
+            Ver todas <ArrowRight size={12} />
+          </Link>
+        }
       >
         {pendingAlerts.length === 0 ? (
           <div className="card">
@@ -317,18 +368,25 @@ export default async function OverviewPage() {
             />
           </div>
         ) : (
-          <div className="stagger-children flex flex-col gap-2">
-            {pendingAlerts.slice(0, 3).map(alert => <ActionPreview key={alert.id} alert={alert} />)}
+          <div className="stagger-children" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pendingAlerts.slice(0, 3).map(alert => (
+              <ActionPreview key={alert.id} alert={alert} />
+            ))}
           </div>
         )}
       </Section>
 
-      <div className="grid grid-cols-[1.6fr_1fr] gap-5">
+      {/* 2-col: remesas activas + agentes (1.6fr 1fr) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 20 }}>
         <Section
           title="Remesas activas"
-          action={<Link href="/dashboard/remesas" className="btn btn--ghost btn--sm">Ver todas <ArrowRight size={12} /></Link>}
+          action={
+            <Link href="/dashboard/remesas" className="btn btn--ghost btn--sm">
+              Ver todas <ArrowRight size={12} />
+            </Link>
+          }
         >
-          <div className="card overflow-hidden p-0">
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -344,26 +402,52 @@ export default async function OverviewPage() {
                 {remesas.map((r, i) => {
                   const status = STATUS_META[r.estado] ?? { label: r.estado, variant: 'idle' as const, progress: 0.1 }
                   return (
-                    <tr key={r.id} className={i === 0 ? 'is-selected' : ''}>
+                    <tr key={r.id} className={i === 0 ? 'is-selected' : ''} style={{ cursor: 'pointer' }}>
                       <td>
-                        <Link href={`/dashboard/remesas?focus=${r.id}`} className="tnum inline-flex items-center gap-1.5 font-medium" style={{ color: 'var(--fg-1)' }}>
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--agent)' }} />
+                        <Link
+                          href={`/dashboard/remesas?focus=${r.id}`}
+                          className="tnum inline-flex items-center gap-1.5 font-medium"
+                          style={{ color: 'var(--fg-1)', fontFamily: 'var(--font-mono)', fontSize: 12 }}
+                        >
+                          <span
+                            style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--agent)', flexShrink: 0 }}
+                            title="Toque de agente"
+                          />
                           {r.numero_invoice}
                         </Link>
                       </td>
-                      <td>{supplierName(r)}</td>
+                      <td style={{ fontSize: 13 }}>{supplierName(r)}</td>
                       <td><StatusPill variant={status.variant}>{status.label}</StatusPill></td>
                       <td>
-                        <span className="inline-flex items-center gap-2">
-                          <span className="inline-block h-1 w-[76px] overflow-hidden rounded-full" style={{ background: 'var(--bg-muted)' }}>
-                            <span className="block h-full rounded-full" style={{ width: `${status.progress * 100}%`, background: progressColor(r.estado) }} />
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <span
+                            style={{
+                              width: 76,
+                              height: 4,
+                              background: 'var(--bg-muted)',
+                              borderRadius: 999,
+                              overflow: 'hidden',
+                              display: 'inline-block',
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: 'block',
+                                height: '100%',
+                                background: progressColor(r.estado),
+                                width: `${status.progress * 100}%`,
+                                borderRadius: 999,
+                              }}
+                            />
                           </span>
-                          <span className="tnum text-[11px]" style={{ color: 'var(--fg-3)' }}>{Math.round(status.progress * 100)}%</span>
+                          <span className="tnum" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                            {Math.round(status.progress * 100)}%
+                          </span>
                         </span>
                       </td>
                       <td className="num tnum">{fmtMonto(r.monto_original, r.moneda_origen)}</td>
                       <td>
-                        <span className="text-xs" style={{ color: 'var(--fg-3)' }}>{relTime(r.created_at)}</span>
+                        <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>{relTime(r.created_at)}</span>
                       </td>
                     </tr>
                   )
@@ -375,9 +459,13 @@ export default async function OverviewPage() {
 
         <Section
           title="Agentes"
-          action={<Link href="/dashboard/agents" className="btn btn--ghost btn--sm">Ver todos <ArrowRight size={12} /></Link>}
+          action={
+            <Link href="/dashboard/agents" className="btn btn--ghost btn--sm">
+              Ver todos <ArrowRight size={12} />
+            </Link>
+          }
         >
-          <div className="card overflow-hidden p-0">
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {activeAgents.length === 0 ? (
               <EmptyState
                 icon={<Bot size={22} />}
@@ -388,25 +476,67 @@ export default async function OverviewPage() {
               activeAgents.map((agent, i) => {
                 const meta = AGENT_META[agent.agent_name] ?? { label: agent.agent_name, icon: Bot }
                 const Icon = meta.icon
+                const isError = agent.resultado === 'ERROR'
                 return (
                   <div
                     key={agent.id}
-                    className="grid items-center gap-2.5 px-3.5 py-2.5"
-                    style={{ gridTemplateColumns: '28px 1fr auto', borderBottom: i < activeAgents.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '28px 1fr auto',
+                      gap: 10,
+                      padding: '10px 14px',
+                      alignItems: 'center',
+                      borderBottom: i < activeAgents.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                    }}
                   >
-                    <div className="flex h-7 w-7 items-center justify-center rounded-md text-white" style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #5B6FE0 60%, #2563EB 100%)' }}>
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 7,
+                        background: 'linear-gradient(135deg, #7C3AED 0%, #5B6FE0 60%, #2563EB 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        flexShrink: 0,
+                      }}
+                    >
                       <Icon size={14} strokeWidth={1.6} />
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: 'var(--fg-1)' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: 'var(--fg-1)',
+                          display: 'flex',
+                          gap: 6,
+                          alignItems: 'center',
+                        }}
+                      >
                         {meta.label}
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: agent.resultado === 'ERROR' ? 'var(--danger)' : 'var(--agent)' }} />
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 999,
+                            background: isError ? 'var(--danger)' : 'var(--agent)',
+                            boxShadow: isError ? undefined : '0 0 0 3px var(--agent-bg)',
+                          }}
+                        />
                       </div>
-                      <p className="truncate text-[11px]" style={{ color: 'var(--fg-3)' }}>{agent.accion.replace(/_/g, ' ')}</p>
+                      <p className="truncate" style={{ fontSize: 11, color: 'var(--fg-3)' }}>
+                        {agent.accion.replace(/_/g, ' ')}
+                      </p>
                     </div>
-                    <div className="text-right">
-                      <div className="tnum text-[11px]" style={{ color: 'var(--fg-4)' }}>{relTime(agent.created_at)}</div>
-                      {agent.count > 1 && <div className="tnum text-[10px]" style={{ color: 'var(--fg-4)' }}>x{agent.count}</div>}
+                    <div style={{ textAlign: 'right' }}>
+                      <div className="tnum" style={{ fontSize: 11, color: 'var(--fg-4)' }}>
+                        {relTime(agent.created_at)}
+                      </div>
+                      {agent.count > 1 && (
+                        <div className="tnum" style={{ fontSize: 10, color: 'var(--fg-4)' }}>x{agent.count}</div>
+                      )}
                     </div>
                   </div>
                 )
@@ -416,11 +546,16 @@ export default async function OverviewPage() {
         </Section>
       </div>
 
+      {/* Últimos documentos procesados */}
       <Section
         title="Últimos documentos procesados"
-        action={<Link href="/dashboard/documentos" className="btn btn--ghost btn--sm">Ver todos <ArrowRight size={12} /></Link>}
+        action={
+          <Link href="/dashboard/documentos" className="btn btn--ghost btn--sm">
+            Ver todos <ArrowRight size={12} />
+          </Link>
+        }
       >
-        <div className="card overflow-hidden p-0">
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {docs.length === 0 ? (
             <EmptyState
               icon={<FileText size={22} />}
@@ -431,19 +566,50 @@ export default async function OverviewPage() {
             docs.map((doc, i) => (
               <div
                 key={doc.id}
-                className="grid items-center gap-3 px-4 py-3"
-                style={{ gridTemplateColumns: '28px 1fr auto auto auto', borderBottom: i < docs.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr auto auto auto',
+                  gap: 14,
+                  padding: '12px 16px',
+                  alignItems: 'center',
+                  borderBottom: i < docs.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                }}
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-md" style={{ background: 'var(--bg-subtle)', color: 'var(--fg-3)' }}>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    background: 'var(--bg-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--fg-3)',
+                    flexShrink: 0,
+                  }}
+                >
                   <FileText size={14} strokeWidth={1.75} />
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate text-[13px] font-medium" style={{ color: 'var(--fg-1)' }}>{doc.numero ?? doc.id.slice(0, 8)}</div>
-                  <div className="truncate text-[11px]" style={{ color: 'var(--fg-4)' }}>{doc.agente_nombre ?? 'agente'} · {relTime(doc.created_at)}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="truncate" style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg-1)' }}>
+                    {doc.numero ?? doc.id.slice(0, 8)}
+                  </div>
+                  <div className="truncate" style={{ fontSize: 11, color: 'var(--fg-4)' }}>
+                    {doc.agente_nombre ?? 'agente'} · {relTime(doc.created_at)}
+                  </div>
                 </div>
-                <span className="badge badge--violet">{DOC_LABEL[doc.tipo] ?? doc.tipo}</span>
-                {doc.confianza != null ? <Confidence value={doc.confianza} /> : <span className="text-[11px]" style={{ color: 'var(--fg-4)' }}>sin score</span>}
-                <span className="tnum text-[11px]" style={{ color: 'var(--fg-4)' }}>{doc.monto != null && doc.moneda ? fmtMonto(doc.monto, doc.moneda) : '—'}</span>
+                <span className="badge badge--violet">
+                  <Sparkles size={10} strokeWidth={1.75} />
+                  {DOC_LABEL[doc.tipo] ?? doc.tipo}
+                </span>
+                {doc.confianza != null ? (
+                  <Confidence value={doc.confianza} />
+                ) : (
+                  <span style={{ fontSize: 11, color: 'var(--fg-4)' }}>sin score</span>
+                )}
+                <span className="tnum" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-4)' }}>
+                  {doc.monto != null && doc.moneda ? fmtMonto(doc.monto, doc.moneda) : '—'}
+                </span>
               </div>
             ))
           )}
