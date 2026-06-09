@@ -5,10 +5,27 @@ import { createBrowserClient } from '@/lib/supabase'
 import { Logo } from '@/components/ui/Logo'
 
 export default function LoginPage() {
-  const [email, setEmail]   = useState('')
-  const [sent, setSent]     = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+  const [email, setEmail]       = useState('')
+  const [sent, setSent]         = useState(false)
+  const [loading, setLoading]   = useState(false)
+  const [guestLoading, setGuestLoading] = useState(false)
+  const [error, setError]       = useState('')
+
+  async function handleGuestLogin() {
+    setGuestLoading(true)
+    setError('')
+    try {
+      const res  = await fetch('/api/auth/demo', { method: 'POST' })
+      const json = await res.json() as { link?: string; error?: string }
+      if (!res.ok || !json.link) {
+        setError('No se pudo iniciar la sesión de demo. Intenta de nuevo.')
+        return
+      }
+      window.location.href = json.link
+    } finally {
+      setGuestLoading(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -122,6 +139,26 @@ export default function LoginPage() {
               style={{ opacity: loading ? 0.75 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
             >
               {loading ? 'Enviando…' : 'Enviar enlace de acceso'}
+            </button>
+
+            {/* ── Guest / demo path ── */}
+            <div className="flex items-center gap-2 my-0.5">
+              <hr className="flex-1" style={{ borderColor: 'var(--border)' }} />
+              <span className="text-[11px]" style={{ color: 'var(--fg-4)' }}>o</span>
+              <hr className="flex-1" style={{ borderColor: 'var(--border)' }} />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGuestLogin}
+              disabled={guestLoading || loading}
+              className="btn w-full justify-center"
+              style={{
+                opacity: (guestLoading || loading) ? 0.65 : 1,
+                cursor: (guestLoading || loading) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {guestLoading ? 'Cargando…' : 'Ver demo →'}
             </button>
           </form>
         )}
