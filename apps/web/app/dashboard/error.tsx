@@ -24,9 +24,9 @@ export default function DashboardError({
         >
           <AlertTriangle size={22} style={{ color: 'var(--danger)' }} />
         </div>
-        <h2 className="t-h2 mb-2">Error al cargar</h2>
+        <h2 className="t-h2 mb-2">Failed to load</h2>
         <p className="text-sm mb-6" style={{ color: 'var(--fg-3)' }}>
-          No se pudo cargar esta sección. Revisa tu conexión o intenta de nuevo.
+          This section could not be loaded. Check your connection and try again.
         </p>
         {error.digest && (
           <p className="t-mono-sm mb-4" style={{ color: 'var(--fg-4)' }}>
@@ -36,10 +36,10 @@ export default function DashboardError({
         <div className="flex gap-3 justify-center">
           <button onClick={reset} className="btn btn--primary">
             <RefreshCw size={13} />
-            Reintentar
+            Retry
           </button>
           <Link href="/dashboard/overview" className="btn btn--ghost">
-            Ir al inicio
+            Go to overview
           </Link>
         </div>
       </div>
