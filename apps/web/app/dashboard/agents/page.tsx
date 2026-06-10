@@ -17,12 +17,12 @@ import {
 import { PageHeader } from '@/components/dashboard/Kit'
 
 const AGENT_META: Record<string, { label: string; icon: LucideIcon; color: string; bg: string; border: string }> = {
-  invoice_intake:     { label: 'Recepción de facturas', icon: FileText,         color: '#4F46E5', bg: '#EEF2FF', border: '#C7D2FE' },
-  customs_funds:      { label: 'Fondos de aduana',      icon: Landmark,         color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  din_reconciliation: { label: 'Reconciliación DIN',    icon: ShieldCheck,      color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
-  nota_debito:        { label: 'Notas AGENSA',          icon: ReceiptText,      color: '#C2410C', bg: '#FFF7ED', border: '#FED7AA' },
-  landed_cost:        { label: 'Costo total',           icon: CircleDollarSign, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
-  data_enrichment:    { label: 'Enriquecimiento',       icon: Search,           color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
+  invoice_intake:     { label: 'Invoice intake',     icon: FileText,         color: '#4F46E5', bg: '#EEF2FF', border: '#C7D2FE' },
+  customs_funds:      { label: 'Customs funds',      icon: Landmark,         color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  din_reconciliation: { label: 'DIN reconciliation', icon: ShieldCheck,      color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  nota_debito:        { label: 'Agency notes',       icon: ReceiptText,      color: '#C2410C', bg: '#FFF7ED', border: '#FED7AA' },
+  landed_cost:        { label: 'Landed cost',        icon: CircleDollarSign, color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  data_enrichment:    { label: 'Data enrichment',    icon: Search,           color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC' },
 }
 
 const AGENTS = ['invoice_intake', 'customs_funds', 'din_reconciliation', 'nota_debito', 'landed_cost', 'data_enrichment']
@@ -54,7 +54,7 @@ function ReasoningPanel({ log }: { log: AgentLog }) {
   return (
     <div className="px-5 pb-4 pt-2 space-y-3" style={{ borderTop: '1px solid #F5F5F4' }}>
       <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#A3A3A3' }}>
-        Razonamiento del agente
+        Agent reasoning
       </p>
       {log.error_mensaje && (
         <div className="rounded-lg px-3 py-2 text-xs font-mono" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
@@ -88,11 +88,11 @@ function ReasoningPanel({ log }: { log: AgentLog }) {
 function relTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const min  = Math.floor(diff / 60000)
-  if (min < 1)  return 'ahora'
-  if (min < 60) return `hace ${min} min`
+  if (min < 1)  return 'just now'
+  if (min < 60) return `${min}m ago`
   const h = Math.floor(min / 60)
-  if (h < 24)   return `hace ${h} h`
-  return `hace ${Math.floor(h / 24)} d`
+  if (h < 24)   return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
 }
 
 export default function AgentsPage() {
@@ -146,7 +146,7 @@ export default function AgentsPage() {
     <div className="dashboard-page--wide min-h-full">
       <PageHeader
         title="Agentes"
-        subtitle={`${AGENTS.length} agentes Claude · actividad en tiempo real`}
+        subtitle={`${AGENTS.length} Claude agents · real-time activity`}
         actions={
           <div className="agent-strip">
             <Bot size={12} strokeWidth={1.75} />
@@ -206,7 +206,7 @@ export default function AgentsPage() {
       <div className="card overflow-hidden p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#E7E5E4' }}>
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Feed de eventos</h2>
+            <h2 className="text-sm font-bold" style={{ color: '#0A0A0A' }}>Event feed</h2>
             {selectedAgent && (
               <span
                 className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full"
@@ -226,7 +226,7 @@ export default function AgentsPage() {
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse-dot" />
             <span className="text-[11px] mono" style={{ color: '#A3A3A3' }}>
-              en vivo · {filteredLogs.length} eventos
+              live · {filteredLogs.length} events
             </span>
           </div>
         </div>
@@ -245,8 +245,8 @@ export default function AgentsPage() {
         ) : !filteredLogs.length ? (
           <EmptyState
             icon={<Bot size={20} style={{ color: '#A3A3A3' }} />}
-            title={selectedAgent ? 'Sin eventos para este agente' : 'Agentes en espera'}
-            description={selectedAgent ? 'Este agente no ha registrado actividad aún.' : 'Se activarán cuando llegue el primer correo.'}
+            title={selectedAgent ? 'No events for this agent' : 'Agents waiting'}
+            description={selectedAgent ? 'This agent has not recorded any activity yet.' : 'They will activate when the first email arrives.'}
           />
         ) : (
           <div className="divide-y" style={{ borderColor: '#F5F5F4' }}>
@@ -288,7 +288,7 @@ export default function AgentsPage() {
                       variant={l.resultado === 'SUCCESS' ? 'success' : l.resultado === 'ERROR' ? 'urgent' : 'pending'}
                       size="sm"
                     >
-                      {l.resultado === 'PENDING_APPROVAL' ? 'Aprobación' : (l.resultado ?? '—')}
+                      {l.resultado === 'PENDING_APPROVAL' ? 'Approval' : (l.resultado ?? '—')}
                     </Badge>
                     {hasPayload && (
                       <span

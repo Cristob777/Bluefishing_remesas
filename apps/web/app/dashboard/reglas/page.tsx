@@ -28,27 +28,27 @@ interface Regla {
 // ── Options for form dropdowns ─────────────────────────────────────────────────
 
 const CAMPOS = [
-  { value: 'remesa.estado',          label: 'Estado de remesa' },
-  { value: 'remesa.moneda_origen',   label: 'Moneda origen' },
-  { value: 'remesa.monto_original',  label: 'Monto original' },
-  { value: 'provision.urgente',      label: 'Provisión urgente' },
-  { value: 'pago.tipo',              label: 'Tipo de pago' },
+  { value: 'remesa.estado',          label: 'Shipment status' },
+  { value: 'remesa.moneda_origen',   label: 'Origin currency' },
+  { value: 'remesa.monto_original',  label: 'Original amount' },
+  { value: 'provision.urgente',      label: 'Urgent provision' },
+  { value: 'pago.tipo',              label: 'Payment type' },
 ]
 
 const OPERADORES = [
-  { value: 'eq',  label: 'es igual a' },
-  { value: 'neq', label: 'no es igual a' },
-  { value: 'gt',  label: 'mayor que' },
-  { value: 'lt',  label: 'menor que' },
-  { value: 'contains', label: 'contiene' },
+  { value: 'eq',  label: 'equals' },
+  { value: 'neq', label: 'not equals' },
+  { value: 'gt',  label: 'greater than' },
+  { value: 'lt',  label: 'less than' },
+  { value: 'contains', label: 'contains' },
 ]
 
 const ACCIONES = [
-  { value: 'ENVIAR_ALERTA',     label: 'Enviar alerta' },
-  { value: 'NOTIFICAR_HECTOR',  label: 'Notificar a Hector' },
-  { value: 'NOTIFICAR_SEBASTIAN', label: 'Notificar a Sebastian' },
-  { value: 'CREAR_TAREA',       label: 'Crear tarea pendiente' },
-  { value: 'MARCAR_URGENTE',    label: 'Marcar como urgente' },
+  { value: 'ENVIAR_ALERTA',       label: 'Send alert' },
+  { value: 'NOTIFICAR_HECTOR',    label: 'Notify finance manager' },
+  { value: 'NOTIFICAR_SEBASTIAN', label: 'Notify operations owner' },
+  { value: 'CREAR_TAREA',         label: 'Create pending task' },
+  { value: 'MARCAR_URGENTE',      label: 'Mark as urgent' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -56,11 +56,11 @@ const ACCIONES = [
 function relTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const min  = Math.floor(diff / 60000)
-  if (min < 1)  return 'ahora'
-  if (min < 60) return `hace ${min} min`
+  if (min < 1)  return 'just now'
+  if (min < 60) return `${min}m ago`
   const h = Math.floor(min / 60)
-  if (h < 24)   return `hace ${h} h`
-  return `hace ${Math.floor(h / 24)} d`
+  if (h < 24)   return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
 }
 
 const campoLabel = (v: string) => CAMPOS.find(c => c.value === v)?.label ?? v
@@ -125,8 +125,8 @@ export default function ReglasPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    if (!nombre.trim()) { setFormError('El nombre es requerido'); return }
-    if (condiciones.some(c => !c.valor.trim())) { setFormError('Completa todos los valores de condición'); return }
+    if (!nombre.trim()) { setFormError('Rule name is required'); return }
+    if (condiciones.some(c => !c.valor.trim())) { setFormError('Fill in all condition values'); return }
     setSaving(true)
     setFormError(null)
     try {
@@ -170,9 +170,9 @@ export default function ReglasPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Automatización</p>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Reglas</h1>
-          <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>Define condiciones CUANDO / SI / ENTONCES para automatizar acciones</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.15em] mb-1" style={{ color: '#4F46E5' }}>Automation</p>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#0A0A0A' }}>Rules</h1>
+          <p className="text-sm mt-1" style={{ color: '#A3A3A3' }}>Define WHEN / IF / THEN conditions to automate actions</p>
         </div>
         <button
           onClick={openDrawer}
@@ -180,16 +180,16 @@ export default function ReglasPage() {
           style={{ background: '#4F46E5' }}
         >
           <Plus size={15} />
-          Nueva Regla
+          New Rule
         </button>
       </div>
 
       {/* Stats strip */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {[
-          { label: 'Total reglas',      value: totalReglas,   accent: '#4F46E5' },
-          { label: 'Activas',           value: activas,       accent: '#059669' },
-          { label: 'Ejecutadas hoy',    value: ejecutadasHoy, accent: '#D97706' },
+          { label: 'Total rules',    value: totalReglas,   accent: '#4F46E5' },
+          { label: 'Active',         value: activas,       accent: '#059669' },
+          { label: 'Run today',      value: ejecutadasHoy, accent: '#D97706' },
         ].map(s => (
           <div
             key={s.label}
@@ -223,9 +223,9 @@ export default function ReglasPage() {
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E7E5E4' }}>
           <EmptyState
             icon={<GitBranch size={20} style={{ color: '#A3A3A3' }} />}
-            title="Sin reglas definidas"
-            description="Crea la primera regla para automatizar acciones cuando ocurran eventos en el sistema."
-            action={{ label: 'Nueva Regla', href: '#' }}
+            title="No rules defined"
+            description="Create your first rule to automate actions when system events occur."
+            action={{ label: 'New Rule', href: '#' }}
           />
         </div>
       ) : (
@@ -246,7 +246,7 @@ export default function ReglasPage() {
                         ? { background: '#ECFDF5', color: '#059669' }
                         : { background: '#F5F5F4', color: '#A3A3A3' }}
                     >
-                      {regla.activa ? 'Activa' : 'Inactiva'}
+                      {regla.activa ? 'Active' : 'Inactive'}
                     </span>
                   </div>
 
@@ -255,24 +255,24 @@ export default function ReglasPage() {
                     {regla.condiciones.map((c, i) => (
                       <span key={i} className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
                         <span className="font-bold text-[9px] uppercase tracking-wider opacity-60">
-                          {i === 0 ? 'CUANDO' : 'Y'}
+                          {i === 0 ? 'WHEN' : 'AND'}
                         </span>
                         {campoLabel(c.campo)} {opLabel(c.operador)} <span className="font-bold">{c.valor}</span>
                       </span>
                     ))}
                     <span className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full" style={{ background: '#ECFDF5', color: '#059669' }}>
-                      <span className="font-bold text-[9px] uppercase tracking-wider opacity-60">ENTONCES</span>
+                      <span className="font-bold text-[9px] uppercase tracking-wider opacity-60">THEN</span>
                       {accionLabel(regla.accion.tipo)}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-4 mt-3">
                     <span className="text-[11px] mono" style={{ color: '#A3A3A3' }}>
-                      {regla.veces_ejecutada} ejecuciones
+                      {regla.veces_ejecutada} executions
                     </span>
                     {regla.ultima_ejecucion && (
                       <span className="text-[11px] mono" style={{ color: '#A3A3A3' }}>
-                        Última: {relTime(regla.ultima_ejecucion)}
+                        Last: {relTime(regla.ultima_ejecucion)}
                       </span>
                     )}
                     {regla.creado_por && (
@@ -321,7 +321,7 @@ export default function ReglasPage() {
             style={{ width: 420, boxShadow: '-4px 0 24px rgba(0,0,0,0.12)' }}
           >
             <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: '#E7E5E4' }}>
-              <h2 className="text-base font-bold" style={{ color: '#0A0A0A' }}>Nueva Regla</h2>
+              <h2 className="text-base font-bold" style={{ color: '#0A0A0A' }}>New Rule</h2>
               <button onClick={closeDrawer} style={{ color: '#A3A3A3' }}>
                 <X size={18} />
               </button>
@@ -331,12 +331,12 @@ export default function ReglasPage() {
 
               {/* Nombre */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#525252' }}>Nombre de la regla</label>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#525252' }}>Rule name</label>
                 <input
                   type="text"
                   value={nombre}
                   onChange={e => setNombre(e.target.value)}
-                  placeholder="Ej: Alerta provisión urgente"
+                  placeholder="E.g.: Urgent provision alert"
                   className="input"
                   required
                 />
@@ -344,12 +344,12 @@ export default function ReglasPage() {
 
               {/* Descripción */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#525252' }}>Descripción (opcional)</label>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#525252' }}>Description (optional)</label>
                 <input
                   type="text"
                   value={descripcion}
                   onChange={e => setDescripcion(e.target.value)}
-                  placeholder="Descripción breve"
+                  placeholder="Brief description"
                   className="input"
                 />
               </div>
@@ -357,21 +357,21 @@ export default function ReglasPage() {
               {/* Conditions */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold" style={{ color: '#525252' }}>Condiciones (CUANDO / Y)</label>
+                  <label className="text-xs font-semibold" style={{ color: '#525252' }}>Conditions (WHEN / AND)</label>
                   <button
                     type="button"
                     onClick={() => setCondiciones(prev => [...prev, emptyCondicion()])}
                     className="text-[11px] font-semibold flex items-center gap-1"
                     style={{ color: '#4F46E5' }}
                   >
-                    <Plus size={12} /> Agregar
+                    <Plus size={12} /> Add
                   </button>
                 </div>
                 <div className="space-y-2">
                   {condiciones.map((c, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <span className="text-[9px] font-bold uppercase tracking-wider w-10 text-right flex-shrink-0" style={{ color: '#A3A3A3' }}>
-                        {i === 0 ? 'CUANDO' : 'Y'}
+                        {i === 0 ? 'WHEN' : 'AND'}
                       </span>
                       <select
                         value={c.campo}
@@ -410,7 +410,7 @@ export default function ReglasPage() {
 
               {/* Action */}
               <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#525252' }}>Acción (ENTONCES)</label>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: '#525252' }}>Action (THEN)</label>
                 <select
                   value={accionTipo}
                   onChange={e => setAccionTipo(e.target.value)}
@@ -431,7 +431,7 @@ export default function ReglasPage() {
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors"
                   style={{ borderColor: '#E7E5E4', color: '#525252' }}
                 >
-                  Cancelar
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -439,7 +439,7 @@ export default function ReglasPage() {
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity"
                   style={{ background: '#4F46E5', opacity: saving ? 0.75 : 1 }}
                 >
-                  {saving ? 'Guardando…' : 'Crear Regla'}
+                  {saving ? 'Saving…' : 'Create Rule'}
                 </button>
               </div>
 

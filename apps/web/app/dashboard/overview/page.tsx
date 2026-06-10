@@ -77,25 +77,25 @@ const AGENT_META: Record<string, { label: string; icon: LucideIcon }> = {
 }
 
 const STATUS_META: Record<string, { label: string; variant: Parameters<typeof StatusPill>[0]['variant']; progress: number }> = {
-  INVOICE_RECIBIDO:    { label: 'Factura',      variant: 'idle',    progress: 0.12 },
-  PAGO_PENDIENTE:      { label: 'Por pagar',    variant: 'pending', progress: 0.24 },
-  PAGO_PARCIAL:        { label: 'Parcial',      variant: 'pending', progress: 0.32 },
-  PAGO_COMPLETO:       { label: 'Pagado',       variant: 'success', progress: 0.46 },
-  EN_ADUANA:           { label: 'Aduana',       variant: 'review',  progress: 0.58 },
-  PROVISION_RECIBIDA:  { label: 'Provisión',    variant: 'info',    progress: 0.7 },
-  MERCADERIA_RECIBIDA: { label: 'Recibida',     variant: 'info',    progress: 0.82 },
-  SALDO_FAVOR:         { label: 'Nota Agensa',  variant: 'review',  progress: 0.9 },
-  RECONCILIADO:        { label: 'Conciliado',   variant: 'success', progress: 1 },
+  INVOICE_RECIBIDO:    { label: 'Invoice',      variant: 'idle',    progress: 0.12 },
+  PAGO_PENDIENTE:      { label: 'Pending',      variant: 'pending', progress: 0.24 },
+  PAGO_PARCIAL:        { label: 'Partial',      variant: 'pending', progress: 0.32 },
+  PAGO_COMPLETO:       { label: 'Paid',         variant: 'success', progress: 0.46 },
+  EN_ADUANA:           { label: 'In Customs',   variant: 'review',  progress: 0.58 },
+  PROVISION_RECIBIDA:  { label: 'Provision',    variant: 'info',    progress: 0.7 },
+  MERCADERIA_RECIBIDA: { label: 'Received',     variant: 'info',    progress: 0.82 },
+  SALDO_FAVOR:         { label: 'Credit Note',  variant: 'review',  progress: 0.9 },
+  RECONCILIADO:        { label: 'Reconciled',   variant: 'success', progress: 1 },
 }
 
 const DOC_LABEL: Record<string, string> = {
   INVOICE: 'Invoice',
   DIN: 'DIN',
-  FACTURA_AGENSA: 'Fact. Agensa',
-  PROVISION: 'Provisión',
-  NOTA_DEBITO: 'Nota débito',
-  NOTA_CREDITO: 'Nota crédito',
-  OTRO: 'Otro',
+  FACTURA_AGENSA: 'Agency Invoice',
+  PROVISION: 'Provision',
+  NOTA_DEBITO: 'Debit Note',
+  NOTA_CREDITO: 'Credit Note',
+  OTRO: 'Other',
 }
 
 function fmtMonto(n: number, moneda: string) {
@@ -107,21 +107,21 @@ function fmtMonto(n: number, moneda: string) {
 }
 
 function relTime(iso: string | null | undefined) {
-  if (!iso) return 'sin fecha'
+  if (!iso) return 'no date'
   const diff = Date.now() - new Date(iso).getTime()
   const min = Math.floor(diff / 60000)
-  if (min < 1) return 'ahora'
-  if (min < 60) return `hace ${min} min`
+  if (min < 1) return 'just now'
+  if (min < 60) return `${min}m ago`
   const h = Math.floor(min / 60)
-  if (h < 24) return `hace ${h} h`
-  return `hace ${Math.floor(h / 24)} d`
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
 }
 
 function greeting() {
   const h = new Date().getHours()
-  if (h < 12) return 'Buenos días'
-  if (h < 19) return 'Buenas tardes'
-  return 'Buenas noches'
+  if (h < 12) return 'Good morning'
+  if (h < 19) return 'Good afternoon'
+  return 'Good evening'
 }
 
 function supplierName(remesa: RecentRemesa) {
@@ -171,7 +171,7 @@ function ActionPreview({ alert }: { alert: AlertRow }) {
             style={alert.urgente ? { background: 'var(--danger-bg)', color: 'var(--danger-text)', borderColor: 'var(--danger-border)' } : undefined}
           >
             <span className="dot" />
-            {alert.urgente ? 'Urgente' : 'Revisión'}
+            {alert.urgente ? 'Urgent' : 'Review'}
           </span>
           <span className="tnum" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-4)' }}>
             {alert.tipo.replace(/_/g, ' ')}
@@ -184,12 +184,12 @@ function ActionPreview({ alert }: { alert: AlertRow }) {
         <p style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 8, maxWidth: 760 }} className="truncate">
           {alert.mensaje}
         </p>
-        <AgentStrip compact>Requiere decisión humana con evidencia antes de cerrar el expediente.</AgentStrip>
+        <AgentStrip compact>Requires human decision with evidence before closing the file.</AgentStrip>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', padding: '0 14px', gap: 6 }}>
-        <button className="btn btn--ghost btn--sm">Posponer</button>
+        <button className="btn btn--ghost btn--sm">Postpone</button>
         <Link href="/dashboard/actions" className={`btn btn--sm ${alert.urgente ? 'btn--danger' : 'btn--primary'}`}>
-          Resolver
+          Resolve
         </Link>
       </div>
     </div>
@@ -309,18 +309,18 @@ export default async function OverviewPage() {
             {greeting()}, {ownerName}
           </h1>
           <div style={{ fontSize: 13, color: 'var(--fg-3)' }} className="capitalize">
-            {pendingTotal} acciones pendientes y {rActive.count ?? 0} remesas activas · {today}
+            {pendingTotal} pending actions · {rActive.count ?? 0} active shipments · {today}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <DemoTrigger fixtureId="invoice-cn-1" />
           <button className="btn btn--ghost">
             <Calendar size={13} strokeWidth={1.75} />
-            Últimos 7 días
+            Last 7 days
           </button>
           <button className="btn btn--secondary">
             <Download size={13} strokeWidth={1.75} />
-            Exportar
+            Export
           </button>
         </div>
       </div>
@@ -328,34 +328,34 @@ export default async function OverviewPage() {
       {/* KPI grid — 4 columns, 12px gap */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28 }}>
         <KpiCard
-          label="Acciones pendientes"
+          label="Pending Actions"
           value={pendingTotal}
-          delta={`${openAlerts} excepciones`}
+          delta={`${openAlerts} exceptions`}
           tone={pendingTotal > 0 ? 'warning' : 'success'}
         />
         <KpiCard
-          label="Remesas activas"
+          label="Active Shipments"
           value={rActive.count ?? 0}
           delta={`${remesasTotal} total`}
         />
         <KpiCard
-          label="Exposición USD"
-          value={`$${totalUSD.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`}
-          delta="abiertas"
+          label="USD Exposure"
+          value={`$${totalUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+          delta="open"
         />
         <KpiCard
-          label="Exposición JPY"
+          label="JPY Exposure"
           value={`¥${totalJPY.toLocaleString('ja-JP')}`}
-          delta="abiertas"
+          delta="open"
         />
       </div>
 
       {/* Acciones pendientes */}
       <Section
-        title="Acciones pendientes"
+        title="Pending Actions"
         action={
           <Link href="/dashboard/actions" className="btn btn--ghost btn--sm">
-            Ver todas <ArrowRight size={12} />
+            View all <ArrowRight size={12} />
           </Link>
         }
       >
@@ -363,8 +363,8 @@ export default async function OverviewPage() {
           <div className="card">
             <EmptyState
               icon={<CheckCircle2 size={22} style={{ color: 'var(--success)' }} />}
-              title="Sin acciones pendientes"
-              description="Cuando un pago, DIN, stock o nota Agensa requiera decisión, aparecerá aquí."
+              title="No pending actions"
+              description="When a payment, DIN, stock or agency note requires a decision, it will appear here."
             />
           </div>
         ) : (
@@ -379,10 +379,10 @@ export default async function OverviewPage() {
       {/* 2-col: remesas activas + agentes (1.6fr 1fr) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 20 }}>
         <Section
-          title="Remesas activas"
+          title="Active Shipments"
           action={
             <Link href="/dashboard/remesas" className="btn btn--ghost btn--sm">
-              Ver todas <ArrowRight size={12} />
+              View all <ArrowRight size={12} />
             </Link>
           }
         >
@@ -390,12 +390,12 @@ export default async function OverviewPage() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Remesa</th>
-                  <th>Proveedor</th>
-                  <th>Estado</th>
-                  <th>Avance</th>
-                  <th className="num">Monto</th>
-                  <th>Creada</th>
+                  <th>Shipment</th>
+                  <th>Supplier</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th className="num">Amount</th>
+                  <th>Created</th>
                 </tr>
               </thead>
               <tbody>
@@ -411,7 +411,7 @@ export default async function OverviewPage() {
                         >
                           <span
                             style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--agent)', flexShrink: 0 }}
-                            title="Toque de agente"
+                            title="Agent touch"
                           />
                           {r.numero_invoice}
                         </Link>
@@ -458,10 +458,10 @@ export default async function OverviewPage() {
         </Section>
 
         <Section
-          title="Agentes"
+          title="Agents"
           action={
             <Link href="/dashboard/agents" className="btn btn--ghost btn--sm">
-              Ver todos <ArrowRight size={12} />
+              View all <ArrowRight size={12} />
             </Link>
           }
         >
@@ -469,8 +469,8 @@ export default async function OverviewPage() {
             {activeAgents.length === 0 ? (
               <EmptyState
                 icon={<Bot size={22} />}
-                title="Agentes en espera"
-                description="Se activan cuando llegan correos o documentos nuevos."
+                title="Agents waiting"
+                description="They activate when emails or documents arrive."
               />
             ) : (
               activeAgents.map((agent, i) => {
@@ -546,12 +546,12 @@ export default async function OverviewPage() {
         </Section>
       </div>
 
-      {/* Últimos documentos procesados */}
+      {/* Latest processed documents */}
       <Section
-        title="Últimos documentos procesados"
+        title="Latest Processed Documents"
         action={
           <Link href="/dashboard/documentos" className="btn btn--ghost btn--sm">
-            Ver todos <ArrowRight size={12} />
+            View all <ArrowRight size={12} />
           </Link>
         }
       >
@@ -559,8 +559,8 @@ export default async function OverviewPage() {
           {docs.length === 0 ? (
             <EmptyState
               icon={<FileText size={22} />}
-              title="Sin documentos procesados"
-              description="Invoices, DIN y respaldos de Agensa aparecerán cuando los agentes los lean."
+              title="No processed documents"
+              description="Invoices, DINs and agency documents will appear once agents process them."
             />
           ) : (
             docs.map((doc, i) => (
@@ -595,7 +595,7 @@ export default async function OverviewPage() {
                     {doc.numero ?? doc.id.slice(0, 8)}
                   </div>
                   <div className="truncate" style={{ fontSize: 11, color: 'var(--fg-4)' }}>
-                    {doc.agente_nombre ?? 'agente'} · {relTime(doc.created_at)}
+                    {doc.agente_nombre ?? 'agent'} · {relTime(doc.created_at)}
                   </div>
                 </div>
                 <span className="badge badge--violet">
@@ -605,7 +605,7 @@ export default async function OverviewPage() {
                 {doc.confianza != null ? (
                   <Confidence value={doc.confianza} />
                 ) : (
-                  <span style={{ fontSize: 11, color: 'var(--fg-4)' }}>sin score</span>
+                  <span style={{ fontSize: 11, color: 'var(--fg-4)' }}>no score</span>
                 )}
                 <span className="tnum" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-4)' }}>
                   {doc.monto != null && doc.moneda ? fmtMonto(doc.monto, doc.moneda) : '—'}
