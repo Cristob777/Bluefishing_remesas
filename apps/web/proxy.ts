@@ -143,7 +143,8 @@ export function proxy(req: NextRequest) {
   const requestId = crypto.randomUUID()
 
   // ── 1. Auth guard — /dashboard routes ────────────────────────────────────
-  if (req.nextUrl.pathname.startsWith('/dashboard')) {
+  // DEMO_MODE skips auth so the demo deployment works without a Supabase session.
+  if (req.nextUrl.pathname.startsWith('/dashboard') && process.env.DEMO_MODE !== 'true') {
     const authed = isAuthenticated(req)
     if (!authed) {
       const loginUrl = new URL('/login', req.url)

@@ -12,6 +12,11 @@ export default function LoginPage() {
   const [error, setError]       = useState('')
 
   async function handleGuestLogin() {
+    // In DEMO_MODE the middleware skips auth — go straight to dashboard.
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+      window.location.href = '/dashboard/overview'
+      return
+    }
     setGuestLoading(true)
     setError('')
     try {
