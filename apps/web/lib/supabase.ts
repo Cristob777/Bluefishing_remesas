@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient as createSSRBrowserClient } from '@supabase/ssr'
 import { config } from './config'
 
 /**
  * Single source of truth for all Supabase clients.
  *
  * Three surfaces:
- *   db              — service-role singleton for server routes and agents
- *   createBrowserClient() — anon-key client for browser components
+ *   db                    — service-role singleton for server routes and agents
+ *   createBrowserClient() — anon-key client for browser components (cookie storage)
  *   getSupabaseAnonKey()  — helper for modules that build their own client
  */
 
@@ -24,9 +25,11 @@ export const db = config.supabase.url && config.supabase.serviceRole
     })
   : (null as never)
 
-// Browser client — anon key, subject to RLS (login + client dashboard pages).
+// Browser client — uses @supabase/ssr so the session is stored in cookies
+// (not localStorage). This is required so the Edge middleware (proxy.ts) can
+// read the sb-* auth cookie to decide whether the request is authenticated.
 export function createBrowserClient() {
-  return createClient(config.supabase.url, getSupabaseAnonKey())
+  return createSSRBrowserClient(config.supabase.url, getSupabaseAnonKey())
 }
 
 // Legacy aliases — kept so existing imports don't break during migration.

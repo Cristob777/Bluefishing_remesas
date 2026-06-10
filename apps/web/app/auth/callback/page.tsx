@@ -25,26 +25,37 @@ function CallbackHandler() {
     const next = searchParams.get('next') ?? '/dashboard/overview'
     const supabase = createBrowserClient()
 
+    const proceed = () => { router.push(next); router.refresh() }
+
     if (code) {
-      // PKCE flow — server sends ?code= query param
-      supabase.auth.exchangeCodeForSession(code).then(({ error: err }) => {
-        if (err) {
+      // PKCE flow. For admin.generateLink links there is no stored verifier,
+      // so exchangeCodeForSession may fail — fall back to getSession() in that case.
+      supabase.auth.exchangeCodeForSession(code).then(async ({ error: err }) => {
+        if (!err) { proceed(); return }
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) { proceed() } else {
           setError('El enlace expiró o ya fue usado. Solicita uno nuevo desde el login.')
-        } else {
-          router.push(next)
-          router.refresh()
         }
       })
     } else {
-      // Implicit flow — Supabase client parses #access_token from URL hash automatically
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          router.push(next)
-          router.refresh()
-        } else {
-          setError('Enlace inválido o expirado. Solicita uno nuevo.')
+      // Implicit flow — tokens arrive in the URL hash (#access_token=...).
+      // Use onAuthStateChange so we wait reliably for the client to parse the hash,
+      // with a 4-second timeout fallback that polls getSession().
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          subscription.unsubscribe()
+          clearTimeout(timer)
+          proceed()
         }
       })
+      const timer = setTimeout(async () => {
+        subscription.unsubscribe()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) { proceed() } else {
+          setError('Enlace inválido o expirado. Solicita uno nuevo.')
+        }
+      }, 4000)
+      return () => { subscription.unsubscribe(); clearTimeout(timer) }
     }
   }, [searchParams, router])
 
