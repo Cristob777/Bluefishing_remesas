@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await db.auth.admin.generateLink({
     type: 'magiclink',
     email: DEMO_EMAIL,
-    options: { redirectTo: `${origin}/dashboard/overview` },
+    options: { redirectTo: `${origin}/auth/callback?next=/dashboard/overview` },
   })
 
   if (error || !data?.properties?.action_link) {
