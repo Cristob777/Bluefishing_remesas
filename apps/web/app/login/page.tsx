@@ -153,18 +153,24 @@ export default function LoginPage() {
               <hr className="flex-1" style={{ borderColor: 'var(--border)' }} />
             </div>
 
-            <button
-              type="button"
-              onClick={handleGuestLogin}
-              disabled={guestLoading || loading}
-              className="btn w-full justify-center"
-              style={{
-                opacity: (guestLoading || loading) ? 0.65 : 1,
-                cursor: (guestLoading || loading) ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {guestLoading ? 'Cargando…' : 'Ver demo →'}
-            </button>
+            {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ? (
+              <a href="/dashboard/overview" className="btn w-full justify-center">
+                Ver demo →
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={handleGuestLogin}
+                disabled={guestLoading || loading}
+                className="btn w-full justify-center"
+                style={{
+                  opacity: (guestLoading || loading) ? 0.65 : 1,
+                  cursor: (guestLoading || loading) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {guestLoading ? 'Cargando…' : 'Ver demo →'}
+              </button>
+            )}
           </form>
         )}
       </div>
