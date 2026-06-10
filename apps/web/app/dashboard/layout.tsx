@@ -1,10 +1,12 @@
 import { Suspense } from 'react'
 import { SidebarNav } from '@/components/SidebarNav'
 import { DashboardTopbar } from '@/components/DashboardTopbar'
+import { DemoAutoSeed } from '@/components/demo/DemoAutoSeed'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-canvas)' }}>
+      <DemoAutoSeed />
       <Suspense fallback={<div style={{ width: 'var(--sidebar-w)' }} />}>
         <SidebarNav />
       </Suspense>

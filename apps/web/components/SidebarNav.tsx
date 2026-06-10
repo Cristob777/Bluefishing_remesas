@@ -29,17 +29,17 @@ type NavItem = {
 }
 
 const MAIN_NAV: Array<Omit<NavItem, 'counter'>> = [
-  { href: '/dashboard/overview',   label: 'Resumen',    Icon: LayoutDashboard },
-  { href: '/dashboard/remesas',    label: 'Remesas',    Icon: Ship },
-  { href: '/dashboard/actions',    label: 'Acciones',   Icon: Inbox, accent: true },
+  { href: '/dashboard/overview',   label: 'Overview',   Icon: LayoutDashboard },
+  { href: '/dashboard/remesas',    label: 'Shipments',  Icon: Ship },
+  { href: '/dashboard/actions',    label: 'Actions',    Icon: Inbox, accent: true },
   { href: '/dashboard/stock',      label: 'Stock',      Icon: Package },
-  { href: '/dashboard/agents',     label: 'Agentes',    Icon: Bot, dot: true },
-  { href: '/dashboard/documentos', label: 'Documentos', Icon: FileText, tone: 'review' },
+  { href: '/dashboard/agents',     label: 'Agents',     Icon: Bot, dot: true },
+  { href: '/dashboard/documentos', label: 'Documents',  Icon: FileText, tone: 'review' },
 ]
 
 const BOTTOM_NAV: Array<Omit<NavItem, 'counter'>> = [
-  { href: '/dashboard/reglas',   label: 'Reglas',        Icon: Settings2 },
-  { href: '/dashboard/settings', label: 'Configuración', Icon: Settings },
+  { href: '/dashboard/reglas',   label: 'Rules',    Icon: Settings2 },
+  { href: '/dashboard/settings', label: 'Settings', Icon: Settings },
 ]
 
 function isActivePath(pathname: string | null, href: string) {
@@ -120,7 +120,7 @@ export function SidebarNav() {
       <Link href="/dashboard/overview" className="flex items-center gap-2 px-1 pb-[18px] no-underline">
         <Logo size={20} />
         <span className="text-base font-medium tracking-[-0.018em]" style={{ color: 'var(--fg-1)' }}>
-          bluefishing
+          {process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'import ops'}
         </span>
       </Link>
 
@@ -138,8 +138,8 @@ export function SidebarNav() {
           style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #5B6FE0 60%, #2563EB 100%)' }}
         />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold" style={{ color: 'var(--fg-1)' }}>Bluefishing CL</div>
-          <div className="truncate text-[10px]" style={{ color: 'var(--fg-4)' }}>Importadora SpA</div>
+          <div className="truncate text-xs font-semibold" style={{ color: 'var(--fg-1)' }}>{process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Import Ops'}</div>
+          <div className="truncate text-[10px]" style={{ color: 'var(--fg-4)' }}>Import Operations Platform</div>
         </div>
         <ChevronsUpDown size={12} strokeWidth={1.6} style={{ color: 'var(--fg-4)' }} />
       </button>
@@ -163,9 +163,9 @@ export function SidebarNav() {
         <span className="avatar h-[26px] w-[26px] text-[11px]">{initials}</span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-xs font-semibold" style={{ color: 'var(--fg-1)' }}>
-            {process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'María Rojas'}
+            {process.env.NEXT_PUBLIC_OWNER_DISPLAY ?? 'Alex Rivera'}
           </div>
-          <div className="text-[10px]" style={{ color: 'var(--fg-4)' }}>Operaciones</div>
+          <div className="text-[10px]" style={{ color: 'var(--fg-4)' }}>Operations</div>
         </div>
         <button
           type="button"

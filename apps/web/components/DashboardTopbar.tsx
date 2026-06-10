@@ -6,14 +6,14 @@ import { Bell, ChevronRight, Search } from 'lucide-react'
 import { KBarSearch, useKBar } from '@/components/ui/KBarSearch'
 
 const TITLES: Record<string, string> = {
-  '/dashboard/overview':   'Resumen',
-  '/dashboard/remesas':    'Remesas',
+  '/dashboard/overview':   'Overview',
+  '/dashboard/remesas':    'Shipments',
   '/dashboard/stock':      'Stock',
-  '/dashboard/actions':    'Acciones',
-  '/dashboard/agents':     'Agentes',
-  '/dashboard/documentos': 'Documentos',
-  '/dashboard/reglas':     'Reglas',
-  '/dashboard/settings':   'Configuración',
+  '/dashboard/actions':    'Actions',
+  '/dashboard/agents':     'Agents',
+  '/dashboard/documentos': 'Documents',
+  '/dashboard/reglas':     'Rules',
+  '/dashboard/settings':   'Settings',
 }
 
 function titleForPath(pathname: string | null) {
@@ -54,7 +54,7 @@ export function DashboardTopbar() {
       >
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-[13px] font-medium" style={{ color: 'var(--fg-3)' }}>
-            Bluefishing CL
+            {process.env.NEXT_PUBLIC_COMPANY_DISPLAY ?? 'Import Ops'}
           </span>
           <ChevronRight size={13} strokeWidth={1.75} style={{ color: 'var(--fg-4)' }} />
           <span className="truncate text-sm font-semibold" style={{ color: 'var(--fg-1)' }}>
@@ -75,7 +75,7 @@ export function DashboardTopbar() {
           }}
         >
           <Search size={14} strokeWidth={1.75} style={{ color: 'var(--fg-4)' }} />
-          <span className="flex-1 truncate">Buscar remesa, factura, DIN...</span>
+          <span className="flex-1 truncate">Search shipment, invoice, DIN...</span>
           <kbd>⌘K</kbd>
         </button>
 
