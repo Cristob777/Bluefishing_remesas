@@ -23,21 +23,29 @@ function CallbackHandler() {
   useEffect(() => {
     const code = searchParams.get('code')
     const next = searchParams.get('next') ?? '/dashboard/overview'
-
-    if (!code) {
-      setError('Enlace inválido o expirado. Solicita uno nuevo.')
-      return
-    }
-
     const supabase = createBrowserClient()
-    supabase.auth.exchangeCodeForSession(code).then(({ error: err }) => {
-      if (err) {
-        setError('El enlace expiró o ya fue usado. Solicita uno nuevo desde el login.')
-      } else {
-        router.push(next)
-        router.refresh()
-      }
-    })
+
+    if (code) {
+      // PKCE flow — server sends ?code= query param
+      supabase.auth.exchangeCodeForSession(code).then(({ error: err }) => {
+        if (err) {
+          setError('El enlace expiró o ya fue usado. Solicita uno nuevo desde el login.')
+        } else {
+          router.push(next)
+          router.refresh()
+        }
+      })
+    } else {
+      // Implicit flow — Supabase client parses #access_token from URL hash automatically
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          router.push(next)
+          router.refresh()
+        } else {
+          setError('Enlace inválido o expirado. Solicita uno nuevo.')
+        }
+      })
+    }
   }, [searchParams, router])
 
   if (error) {
