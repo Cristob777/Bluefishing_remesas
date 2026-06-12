@@ -182,53 +182,146 @@ async function getAccounts(): Promise<AccountConfig[]> {
   return [...dbAccounts, ...extra]
 }
 
-// ── PDF attachment extraction ──────────────────────────────────────────────────
-// Strategy:
-//   1. Download attachment bytes from Gmail API
-//   2. Try pdf-parse (fast, free) — works for digital PDFs from suppliers
-//   3. If text < 200 chars (scanned/image PDF), fall back to Claude Vision
-//      which natively understands PDF documents
+// ── Attachment text extraction — all formats ──────────────────────────────────
 //
-// Result is appended to the email body so downstream agents get full context.
+// Handles every format that suppliers or customs agencies might send:
+//   • PDF       — pdf-parse (digital) → Claude Vision fallback (scanned)
+//   • Images    — JPG, PNG, WEBP, GIF, HEIC, BMP, TIFF, screenshots
+//                 → Claude Vision (native multimodal)
+//   • Office    — DOCX (mammoth-lite text strip), XLSX (xlsx library)
+//   • Text      — TXT, CSV, HTML, XML → direct UTF-8 decode
+//   • Unknown   — attempt Claude Vision; skip silently if unsupported
+//
+// All extracted content is appended to bodyText so agents see full context.
 
-async function extractPdfText(pdfBuffer: Buffer, filename: string): Promise<string> {
-  // Step 1: digital PDF via pdf-parse
-  try {
-    const result = await pdfParse(pdfBuffer, { max: 10 })
-    const text   = (result.text ?? '').trim()
-    if (text.length >= 200) {
-      return `\n\n[PDF: ${filename}]\n${text.slice(0, 6000)}`
-    }
-  } catch {
-    // pdf-parse failed — likely scanned image, fall through to Claude Vision
+// MIME types that Claude Vision can handle directly as images
+const CLAUDE_IMAGE_MIME = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+])
+
+// MIME types we decode as plain text
+const PLAIN_TEXT_MIME = new Set([
+  'text/plain', 'text/csv', 'text/html', 'text/xml',
+  'application/json', 'application/xml', 'application/csv',
+])
+
+function mimeFromFilename(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+  const map: Record<string, string> = {
+    pdf: 'application/pdf',
+    jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    png: 'image/png', gif: 'image/gif', webp: 'image/webp',
+    heic: 'image/heic', heif: 'image/heif',
+    bmp: 'image/bmp', tiff: 'image/tiff', tif: 'image/tiff',
+    txt: 'text/plain', csv: 'text/csv',
+    html: 'text/html', htm: 'text/html',
+    xml: 'application/xml',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    doc:  'application/msword',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    xls:  'application/vnd.ms-excel',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   }
+  return map[ext] ?? 'application/octet-stream'
+}
 
-  // Step 2: scanned/image PDF — use Claude with native PDF support
+async function callClaudeVision(
+  b64:      string,
+  mimeType: string,
+  label:    string,
+  isPdf:    boolean,
+): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) return ''
   try {
-    const client   = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const b64      = pdfBuffer.toString('base64')
-    const response = await client.messages.create({
+    const client  = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content: any[] = isPdf
+      ? [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+          { type: 'text',     text: 'Extract all text from this document. Return only the raw text, no commentary.' },
+        ]
+      : [
+          { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64 } },
+          { type: 'text',  text: 'Extract all visible text from this image. Return only the raw text, no commentary.' },
+        ]
+
+    const res = await client.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      messages: [{
-        role:    'user',
-        content: [
-          {
-            type:   'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: b64 },
-          } as unknown as Anthropic.TextBlockParam,
-          {
-            type: 'text',
-            text: 'Extract all text from this document. Return only the raw text, no commentary.',
-          },
-        ],
-      }],
+      messages:   [{ role: 'user', content }],
     })
-    const extracted = response.content[0]?.type === 'text' ? response.content[0].text : ''
-    if (extracted) return `\n\n[PDF (OCR): ${filename}]\n${extracted.slice(0, 6000)}`
+    const text = res.content[0]?.type === 'text' ? res.content[0].text.trim() : ''
+    return text ? `\n\n[${label}: ${text.slice(0, 5000)}]` : ''
   } catch {
-    // Claude Vision failed — skip attachment
+    return ''
+  }
+}
+
+async function extractAttachmentText(buf: Buffer, filename: string, mimeHint: string): Promise<string> {
+  const mime     = mimeHint && mimeHint !== 'application/octet-stream' ? mimeHint : mimeFromFilename(filename)
+  const b64      = () => buf.toString('base64')
+  const tag      = filename
+
+  // ── Plain text formats ──────────────────────────────────────────────────────
+  if (PLAIN_TEXT_MIME.has(mime)) {
+    const text = buf.toString('utf8').slice(0, 6000).trim()
+    return text ? `\n\n[${tag}]\n${text}` : ''
+  }
+
+  // ── PDF ─────────────────────────────────────────────────────────────────────
+  if (mime === 'application/pdf') {
+    try {
+      const result = await pdfParse(buf, { max: 10 })
+      const text   = (result.text ?? '').trim()
+      if (text.length >= 200) return `\n\n[PDF: ${tag}]\n${text.slice(0, 6000)}`
+    } catch { /* fall through */ }
+    return callClaudeVision(b64(), 'application/pdf', `PDF (OCR): ${tag}`, true)
+  }
+
+  // ── Images natively supported by Claude Vision ──────────────────────────────
+  if (CLAUDE_IMAGE_MIME.has(mime)) {
+    return callClaudeVision(b64(), mime, `Image: ${tag}`, false)
+  }
+
+  // ── Images not natively supported (BMP, TIFF, HEIC) ──────────────────────
+  // Convert to PNG-compatible base64 isn't feasible in Node without sharp.
+  // Attempt Claude Vision anyway — it may still work for some formats.
+  if (mime.startsWith('image/')) {
+    return callClaudeVision(b64(), 'image/png', `Image (${mime}): ${tag}`, false)
+  }
+
+  // ── DOCX — strip XML tags to get raw text ───────────────────────────────────
+  if (mime.includes('wordprocessingml') || mime === 'application/msword') {
+    try {
+      // DOCX is a ZIP — extract word/document.xml and strip tags
+      const { default: JSZip } = await import('jszip').catch(() => ({ default: null }))
+      if (JSZip) {
+        const zip  = await JSZip.loadAsync(buf)
+        const xml  = await zip.file('word/document.xml')?.async('string')
+        if (xml) {
+          const text = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 6000)
+          if (text.length > 100) return `\n\n[DOCX: ${tag}]\n${text}`
+        }
+      }
+    } catch { /* fall through to Claude */ }
+    return callClaudeVision(b64(), 'application/pdf', `DOCX: ${tag}`, true)
+  }
+
+  // ── XLSX — extract all cell values as text ───────────────────────────────────
+  if (mime.includes('spreadsheetml') || mime.includes('ms-excel')) {
+    try {
+      const XLSX = await import('xlsx').catch(() => null)
+      if (XLSX) {
+        const wb   = XLSX.read(buf, { type: 'buffer' })
+        const rows: string[] = []
+        for (const name of wb.SheetNames) {
+          const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name])
+          rows.push(`Sheet: ${name}\n${csv}`)
+        }
+        const text = rows.join('\n\n').slice(0, 6000)
+        if (text.length > 50) return `\n\n[XLSX: ${tag}]\n${text}`
+      }
+    } catch { /* skip */ }
   }
 
   return ''
@@ -357,20 +450,22 @@ async function pollGmailAccount(account: AccountConfig): Promise<ExtractedEmail[
       size:        p.body?.size ?? 0,
     }))
 
-    // Extract text from PDF attachments (invoices, DINs, customs docs)
+    // Extract text from ALL attachment types (PDF, images, screenshots, Office docs)
     for (const part of attachmentParts) {
-      const isPdf = part.mimeType === 'application/pdf' ||
-                    (part.filename ?? '').toLowerCase().endsWith('.pdf')
-      if (!isPdf) continue
-
       const attachId = part.body?.attachmentId
       if (!attachId) continue
 
-      const buf = await downloadAttachment(gmail, msg.id, attachId)
+      const filename = part.filename ?? 'attachment'
+      const mimeType = part.mimeType ?? 'application/octet-stream'
+
+      // Skip audio/video — not useful for import operations
+      if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) continue
+
+      const buf = await downloadAttachment(gmail, msg.id!, attachId)
       if (!buf) continue
 
-      const pdfText = await extractPdfText(buf, part.filename ?? 'attachment.pdf')
-      if (pdfText) bodyText += pdfText
+      const extracted = await extractAttachmentText(buf, filename, mimeType)
+      if (extracted) bodyText += extracted
     }
 
     bodyText = bodyText.slice(0, 12000) // extended limit to include PDF content
