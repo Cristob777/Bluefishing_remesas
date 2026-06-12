@@ -112,7 +112,8 @@ function extractBody(payload: {
 
 // Account label — kept as union for type safety in downstream agents.
 // 'ops' is the recommended slot for the Ops Inbox pattern (one shared inbox per company).
-type AccountLabel = 'sebastian' | 'hector' | 'ops' | string
+// 'owner' and 'finance' replace legacy personal-name slots.
+type AccountLabel = 'owner' | 'finance' | 'ops' | string
 
 interface AccountConfig {
   label:        AccountLabel
@@ -176,6 +177,54 @@ async function getAccounts(): Promise<AccountConfig[]> {
   return [...dbAccounts, ...extra]
 }
 
+/**
+ * Builds a targeted Gmail search query so the poller only fetches emails
+ * that are actually relevant to import operations — regardless of how many
+ * unread emails exist in the inbox.
+ *
+ * Strategy: match on KNOWN SENDERS (suppliers + customs agency) OR on
+ * SUBJECT KEYWORDS typical of import documents (invoices, DINs, provisions).
+ * Without this filter the poller reads the 3 most recent unread emails which
+ * might be newsletters, not invoices.
+ */
+function buildImportQuery(): string {
+  const senderParts: string[] = []
+
+  // Customs agency
+  const customsEmail = process.env.CUSTOMS_AGENCY_EMAIL
+  if (customsEmail) senderParts.push(`from:${customsEmail}`)
+
+  // Supplier emails via env vars
+  for (let i = 1; i <= 8; i++) {
+    const e = process.env[`SUPPLIER_EMAIL_${i}`]
+    if (e) senderParts.push(`from:${e}`)
+  }
+
+  // Legacy single-supplier env var
+  const chinaEmail = process.env.SUPPLIER_CHINA_EMAIL
+  if (chinaEmail) senderParts.push(`from:${chinaEmail}`)
+
+  // Subject keyword patterns common in import documents (Spanish + English)
+  const subjectKeywords = [
+    'invoice', 'factura', 'proforma',
+    '"provision de fondos"', '"provisión de fondos"', '"solicitud de fondos"',
+    '"ag aduana"', 'despacho', 'liquidación', 'liquidacion',
+    'DIN', '"nota de débito"', '"nota debito"',
+    'packing list', 'bill of lading', 'BL',
+  ]
+  const subjectParts = subjectKeywords.map(k => `subject:${k}`)
+
+  const allParts = [...senderParts, ...subjectParts]
+
+  // Only look at emails from the last 6 months to avoid reprocessing old inbox clutter
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const afterDate = `${sixMonthsAgo.getFullYear()}/${String(sixMonthsAgo.getMonth() + 1).padStart(2, '0')}/${String(sixMonthsAgo.getDate()).padStart(2, '0')}`
+
+  const filterClause = allParts.length > 0 ? ` (${allParts.join(' OR ')})` : ''
+  return `is:unread in:inbox after:${afterDate}${filterClause}`
+}
+
 async function pollGmailAccount(account: AccountConfig): Promise<ExtractedEmail[]> {
   const oauth2 = makeOAuth2Client()
   oauth2.setCredentials({ refresh_token: account.refreshToken })
@@ -183,11 +232,13 @@ async function pollGmailAccount(account: AccountConfig): Promise<ExtractedEmail[
   const gmail = google.gmail({ version: 'v1', auth: oauth2 })
   const emails: ExtractedEmail[] = []
 
-  // List UNREAD messages in INBOX
+  const query = buildImportQuery()
+
+  // List UNREAD messages matching import-specific senders/subjects
   const listRes = await gmail.users.messages.list({
     userId:      'me',
-    q:           'is:unread in:inbox',
-    maxResults:  3,
+    q:           query,
+    maxResults:  50,
   })
 
   const messages = listRes.data.messages ?? []
