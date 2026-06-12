@@ -1,6 +1,11 @@
 import { google } from 'googleapis'
 import { createClient } from '@supabase/supabase-js'
+import Anthropic from '@anthropic-ai/sdk'
 import { db } from '@/lib/supabase'
+
+// pdf-parse: extract text from digital (non-scanned) PDFs without OCR
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse')
 
 export interface ExtractedEmail {
   messageId:   string
@@ -177,6 +182,77 @@ async function getAccounts(): Promise<AccountConfig[]> {
   return [...dbAccounts, ...extra]
 }
 
+// ── PDF attachment extraction ──────────────────────────────────────────────────
+// Strategy:
+//   1. Download attachment bytes from Gmail API
+//   2. Try pdf-parse (fast, free) — works for digital PDFs from suppliers
+//   3. If text < 200 chars (scanned/image PDF), fall back to Claude Vision
+//      which natively understands PDF documents
+//
+// Result is appended to the email body so downstream agents get full context.
+
+async function extractPdfText(pdfBuffer: Buffer, filename: string): Promise<string> {
+  // Step 1: digital PDF via pdf-parse
+  try {
+    const result = await pdfParse(pdfBuffer, { max: 10 })
+    const text   = (result.text ?? '').trim()
+    if (text.length >= 200) {
+      return `\n\n[PDF: ${filename}]\n${text.slice(0, 6000)}`
+    }
+  } catch {
+    // pdf-parse failed — likely scanned image, fall through to Claude Vision
+  }
+
+  // Step 2: scanned/image PDF — use Claude with native PDF support
+  if (!process.env.ANTHROPIC_API_KEY) return ''
+  try {
+    const client   = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const b64      = pdfBuffer.toString('base64')
+    const response = await client.messages.create({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages: [{
+        role:    'user',
+        content: [
+          {
+            type:   'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: b64 },
+          } as unknown as Anthropic.TextBlockParam,
+          {
+            type: 'text',
+            text: 'Extract all text from this document. Return only the raw text, no commentary.',
+          },
+        ],
+      }],
+    })
+    const extracted = response.content[0]?.type === 'text' ? response.content[0].text : ''
+    if (extracted) return `\n\n[PDF (OCR): ${filename}]\n${extracted.slice(0, 6000)}`
+  } catch {
+    // Claude Vision failed — skip attachment
+  }
+
+  return ''
+}
+
+async function downloadAttachment(
+  gmail:     ReturnType<typeof google.gmail>,
+  messageId: string,
+  attachId:  string,
+): Promise<Buffer | null> {
+  try {
+    const res = await gmail.users.messages.attachments.get({
+      userId:       'me',
+      messageId,
+      id:           attachId,
+    })
+    const data = res.data.data
+    if (!data) return null
+    return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
+  } catch {
+    return null
+  }
+}
+
 /**
  * Builds a targeted Gmail search query so the poller only fetches emails
  * that are actually relevant to import operations — regardless of how many
@@ -266,19 +342,38 @@ async function pollGmailAccount(account: AccountConfig): Promise<ExtractedEmail[
       continue
     }
 
-    const subject  = getHeader(headers, 'subject')
-    const from     = parseEmail(getHeader(headers, 'from'))
-    const to       = parseEmail(getHeader(headers, 'to'))
-    const dateStr  = getHeader(headers, 'date')
-    const bodyText = extractBody(msgData.payload ?? {}).slice(0, 8000)
+    const subject = getHeader(headers, 'subject')
+    const from    = parseEmail(getHeader(headers, 'from'))
+    const to      = parseEmail(getHeader(headers, 'to'))
+    const dateStr = getHeader(headers, 'date')
+    let   bodyText = extractBody(msgData.payload ?? {}).slice(0, 8000)
 
-    const attachments = (msgData.payload?.parts ?? [])
+    const attachmentParts = (msgData.payload?.parts ?? [])
       .filter(p => p.filename && p.filename.length > 0)
-      .map(p => ({
-        filename:    p.filename ?? 'attachment',
-        contentType: p.mimeType ?? 'application/octet-stream',
-        size:        p.body?.size ?? 0,
-      }))
+
+    const attachments = attachmentParts.map(p => ({
+      filename:    p.filename ?? 'attachment',
+      contentType: p.mimeType ?? 'application/octet-stream',
+      size:        p.body?.size ?? 0,
+    }))
+
+    // Extract text from PDF attachments (invoices, DINs, customs docs)
+    for (const part of attachmentParts) {
+      const isPdf = part.mimeType === 'application/pdf' ||
+                    (part.filename ?? '').toLowerCase().endsWith('.pdf')
+      if (!isPdf) continue
+
+      const attachId = part.body?.attachmentId
+      if (!attachId) continue
+
+      const buf = await downloadAttachment(gmail, msg.id, attachId)
+      if (!buf) continue
+
+      const pdfText = await extractPdfText(buf, part.filename ?? 'attachment.pdf')
+      if (pdfText) bodyText += pdfText
+    }
+
+    bodyText = bodyText.slice(0, 12000) // extended limit to include PDF content
 
     const extracted: ExtractedEmail = {
       messageId,
