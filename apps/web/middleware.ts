@@ -138,7 +138,7 @@ function isAuthenticated(req: NextRequest): boolean {
 
 // ── Main proxy ────────────────────────────────────────────────────────────────
 
-export function proxy(req: NextRequest) {
+export default function middleware(req: NextRequest) {
   const nonce     = Buffer.from(crypto.randomUUID()).toString('base64')
   const requestId = crypto.randomUUID()
 

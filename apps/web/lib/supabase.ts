@@ -26,7 +26,7 @@ export const db = config.supabase.url && config.supabase.serviceRole
   : (null as never)
 
 // Browser client — uses @supabase/ssr so the session is stored in cookies
-// (not localStorage). This is required so the Edge middleware (proxy.ts) can
+// (not localStorage). This is required so the Edge middleware (middleware.ts) can
 // read the sb-* auth cookie to decide whether the request is authenticated.
 // Falls back to plain createClient when SSR client throws (e.g. missing URL
 // in demo deployments where auth is bypassed by the middleware host check).
