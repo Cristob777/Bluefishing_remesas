@@ -42,6 +42,8 @@ system_prompt: |
      - landed_cost_unitario = (precio_unitario × fx_ponderado) + (costo_aduana_sku / cantidad_recibida)
   8. INSERT resultados en documentos (tipo='OTRO', numero='LANDED_COST_REPORT')
   9. UPDATE agent_logs
+  10. POST {NEXTAUTH_URL}/api/remesas/{remesa_id}/expediente
+      → Esto genera y registra el expediente final del ciclo completo
 
   ## Importante
   - Usar cantidad_recibida de stock_items (lo que Bsale registró), NUNCA cantidad_invoice

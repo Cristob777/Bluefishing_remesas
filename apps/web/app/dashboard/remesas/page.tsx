@@ -260,6 +260,17 @@ function SidePanel({
             <Badge variant={ESTADO_BADGE[remesa.estado] ?? 'neutral'} size="md">
               {ESTADO_LABELS[remesa.estado] ?? remesa.estado}
             </Badge>
+            {remesa.estado === 'RECONCILIADO' && (
+              <a
+                href={`/api/remesas/${remesa.id}/expediente`}
+                download
+                className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+                style={{ background: '#ECFDF5', color: '#059669' }}
+                title="Download expediente"
+              >
+                <Download size={15} />
+              </a>
+            )}
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
